@@ -357,9 +357,16 @@ Can be null if it hasn't started or it started and the size is unknown
 Status of the media, can be one of: `"IDLE"`, `"ACTIVE"`, `"PAUSED"`, `"FINISHED"`
 
 #### media.sources `ANVMediaSource[]`
+List of sources (mirrors and direct streams) available for this media
 
 #### media.source `number`
 Index of the current source being used from `media.sources`
+
+#### media.sourceAttempts `number`
+Number of attempts to use the current source, ANV will try the next source when it reaches the max number of attempts
+
+#### media.exhuastedSources `boolean`
+Whether ANV tried all the sources and they **all** didn't work
 
 ### Class: ANVMediaSource
 #### source.type `string`
