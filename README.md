@@ -40,7 +40,6 @@ Stream resolvers take URLs and return streams which are continuously streamed in
 Modules implement the facets and register them with ANV. ANV recognizes modules with the pattern `*.mod.js`, here's an example module exposing a facet and utilizing a `genericresolver`.
 
 ### Example module
-All facet implementations must have a unique name in that facet.
 ```js
 // example.mod.js
 const { register, genericResolver } = require("anv")
@@ -233,7 +232,7 @@ register("streamresolver", {
   description: "My Stream Resolver",
   weight: 0,
   external: false,
-  resolve(url, out) {
+  resolve(url, out, info) {
     const req = request(url)
 
     return {
@@ -251,11 +250,18 @@ register("streamresolver", {
     - Description of the stream resolver.
   - **external** `boolean`
     - Whether a external program will manage the download instead
-  - **resolve(url, out)**
+  - **resolve(url, out[, info])**
     - url: `string`
       - URL to resource
     - out: `StreamResolverWritable | string`
       - If `external` is false a Writable stream (See below) managed by ANV, otherwise an absolute path string to the file
+    - info: `function(data)` _Optional._
+      - data: `object`
+        - size: `number`
+          - Full size of stream
+        - bytes: `number`
+          - Bytes saved
+      - Function to call when `external` is true to inform ANV of the status of the download. Has no effect if `external` false.
     - _Return:_ `object`
       - stop: `function`
         - Called by ANV to stop downloading (if bytes are still)
