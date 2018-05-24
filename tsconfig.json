@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
     "module": "commonjs",
     "esModuleInterop": true,
     "target": "es6",
@@ -9,12 +11,13 @@
     "baseUrl": ".",
     "paths": {
       "*": [
-        "node_modules/*"
+        "node_modules/*",
+        "src/node_modules/*"
       ]
     }
   },
   "include": [
-    "src/main.ts"
+    "./src/daemon/*"
   ],
   "exclude": [
     "node_modules"
