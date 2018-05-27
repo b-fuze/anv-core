@@ -49,9 +49,9 @@ register("facet", {
   ...facetOptions
 })
 
-genericResolver("resolvername", {
-  ...options
-}, function callback(data) { })
+genericResolver("resolvername", "uri://host.tld/page", function done(data) {
+  do_stuff_with(data)
+})
 ```
 `register(...)` **must** be invoked immediately when the module is loaded, subsequent invocations (async, etc) will error.
 
@@ -85,7 +85,7 @@ register("provider", {
     "u:uploader"
   ],
   mediaList(metaMediaList) { },
-  mediaSource(metaMediaSource) { },
+  mediaSource(metaMediaSource, direct) { },
   search(query) { }
 })
 ```
@@ -127,9 +127,11 @@ Anime site example: metaMediaList would be the HTML content of the anime page an
     - metaMediaList: `any`
       - Array data returned from the generic resolver
     - _Return:_ If `mediaSource(...)` isn't omitted, array of URLs to media source items which can be used with `mediaSource(...)` request. Otherwise an array of mediaSourceExample's (see below)
-  - **mediaSource(metaMediaSource)** _Optional._
+  - **mediaSource(metaMediaSource, direct)** _Optional._
     - metaMediaSource: `any`
       - Data returned from the generic resolver
+    - direct: `boolean`
+      - Whether a direct stream or mirror is expected from this media source (i.e. this mediasource is from another mediasource)
     - _Return:_ mediaSourceExample (see below)
     - If omitted, `mediaList(...)` is expected to return an array of mediaSourceExample's (see below)
   - **search(query)** _Optional._
@@ -137,11 +139,20 @@ Anime site example: metaMediaList would be the HTML content of the anime page an
     - _Return:_ Array of URLs which providers can use to load a `mediaList`
 
 ```js
-mediaSourceExample: [
-  ["stream", "streamresolver", "uri://host/stream.mp4", "uploader"],
-  ["mirror", "uri://host/media-page", "uploader"],
-  ...
-]
+mediaSourceExample: [{
+  type: "stream",
+  resolver: "streamresolver",
+  url: "uri://host/stream.mp4",
+  tiers: [ "uploader", "server", "..." ]
+}, {
+  type: "mirror",
+  url: "uri://host/media-page",
+  tiers: [ "uploader", "server", "..." ]
+}, {
+  type: "mediasource",
+  url: "uri://provider/media-src-page",
+  tiers: [ "uploader", "server", "..." ]
+}]
 ```
 `"uploader"` can be `null`
 
@@ -175,7 +186,7 @@ register("mirror", {
   - **description** `string` _Optional._
     - Description of the mirror.
   - **weight** `number` _Optional._
-    - Weight of the mirror (to determine when it should override other mirror of the same name)
+    - Weight of the mirror (to determine when it should override another mirror of the same name)
   - **cache** `boolean` _Optional._ Default: `true`
     - Whether the metaMediaSource for `mediaSource(...)` should be reobtained with a fresh request when querying for different tiers
   - **delay** `function | number` _Optional._ Default: `500`
@@ -208,6 +219,7 @@ register("mirror", {
 register("genericresolver", {
   name: "my-genericresolver",
   description: "My Generic Resolver",
+  weight: 0,
   resolve(url, done) { }
 })
 ```
@@ -216,6 +228,8 @@ register("genericresolver", {
     - Unique name of the generic resolver, can only include alphanumeric characters and hyphens.
   - **description** `string` _Optional._
     - Description of the generic resolver.
+  - **weight** `number` _Optional._
+    - Weight of the genericresolver (to determine when it should override another genericresolver of the same name)
   - **resolve(url, done)**
     - url: `string`
       - URL to resource
@@ -248,11 +262,15 @@ register("streamresolver", {
     - Unique name of the generic resolver, can only include alphanumeric characters and hyphens.
   - **description** `string` _Optional._
     - Description of the stream resolver.
+  - **weight** `number` _Optional._
+    - Weight of the streamresolver (to determine when it should override another streamresolver of the same name)
   - **external** `boolean`
     - Whether a external program will manage the download instead
-  - **resolve(url, out[, info])**
+  - **resolve(url, bytes, out[, info])**
     - url: `string`
       - URL to resource
+    - bytes: `number`
+      - Byte offset to start from
     - out: `StreamResolverWritable | string`
       - If `external` is false a Writable stream (See below) managed by ANV, otherwise an absolute path string to the file
     - info: `function(data)` _Optional._
@@ -339,6 +357,8 @@ Note: Tasks always have the whole media list selected
 ### Class: ANVTask
 #### task.id `number`
 Task ID
+
+#### task.title `string`
 
 #### task.list `ANVMedia[]`
 Array of ANVMedia items
