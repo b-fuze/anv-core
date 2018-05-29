@@ -15,12 +15,22 @@ const minimist_1 = __importDefault(require("minimist"));
 const state_1 = require("./state");
 const connection_1 = require("./connection");
 const modules_1 = require("./modules");
+const clock_1 = require("./clock");
 const args = minimist_1.default(process.argv.slice(2));
 if (args.v || args.verbose) {
     state_1.state.verbose = true;
 }
 // Change to current dir
 process.chdir(path.dirname(process.argv[1]));
+// Load modules
+modules_1.loadModules("../modules", true);
+if (args.modules) {
+    // Load extra modules
+    modules_1.loadModules(args.modules);
+    // TODO: Check this
+}
+// Start ticking
+const mainClock = clock_1.clock();
 // Listen for clients
 function listenWS() {
     const validAddress = /^\d+\.\d+\.\d+\.\d+$/;
@@ -45,11 +55,4 @@ if (args.ipc) {
 }
 if (args.ws) {
     listenWS();
-}
-// Load modules
-modules_1.loadModules("../modules", true);
-if (args.modules) {
-    // Load extra modules
-    modules_1.loadModules(args.modules);
-    // TODO: Check this
 }

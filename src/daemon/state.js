@@ -8,10 +8,17 @@ exports.state = {
     limitOnlyGlobal: false,
     sourceTimeout: 3000,
     maxBufferSize: 1000000,
+    scanDlDirOnStart: false,
+    useGlobalPersistentStateStore: false,
+    tickDelay: 1000,
     task: {
         dlPath: null,
         minimalFileName: true,
         autoStart: false,
+        ignoreCaches: false,
     }
 };
 exports.defaultState = utils_1.deepCopy(exports.state);
+exports.tmpState = {
+    currentDl: 0,
+};

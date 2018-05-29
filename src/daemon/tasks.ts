@@ -60,6 +60,7 @@ class Task {
   list: Media[];
   active: boolean = false;
   remove: boolean = false; // Whether to remove this task on the next tick
+  currentDl: number = 0;
 
   constructor(
     list: Media[],
@@ -91,11 +92,13 @@ class Media {
   listId: number;
   title: string;
   fileName: string;
+  taskId: number;
 
   selected: boolean = true;
   status: MediaStatus = MediaStatus.IDLE;
   bytes: number = 0;
   size: number = null;
+  facetId: string = null;
   sources: MediaSource[] = [];
   source: number = 0;
   sourceAttempts: number = 0;
@@ -103,12 +106,14 @@ class Media {
 
   outStream: Writable;
   buffer: Writable;
-  bufferedBytes: 0; // Cleared every tick, used to calculate download speed
+  bufferedBytes: number = 0; // Cleared every tick, used to calculate download speed
+  speed: number = 0;
 
   constructor(
     title: string,
     fileName: string,
     taskMediaList: Media[],
+    taskId: number,
   ) {
     this.id = media.length;
     this.listId = taskMediaList.length;
@@ -116,6 +121,32 @@ class Media {
 
     this.title = title;
     this.fileName = fileName;
+    this.taskId = taskId;
+  }
+
+  start() {
+    if (this.status !== MediaStatus.IDLE && this.status !== MediaStatus.PAUSED) {
+      return;
+    }
+
+    // FIXXX
+    this.request = someNewRequest();
+
+    this.getTask().currentDl++;
+    this.status = MediaStatus.ACTIVE;
+  }
+
+  stop(finished = false) {
+    if (this.status !== MediaStatus.ACTIVE) {
+      return;
+    }
+
+    this.getTask().currentDl--;
+    this.status = MediaStatus.PAUSED;
+  }
+
+  getTask() {
+    return crud.getTask(this.taskId);
   }
 }
 

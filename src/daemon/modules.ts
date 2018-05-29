@@ -1,7 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 import {setInstance, RegisterFacetTypeMap} from "anv";
-import {registerFacet} from "./facets";
+import {sanitize} from "./sanitize";
+import {registerFacet, getFacet, getFacetById, GenericResolver} from "./facets";
 
 let curModule: string = null;
 
@@ -15,12 +16,37 @@ export const validModule = /[a-zA-Z\d-]\.mod\.js/;
 setInstance(class {
   static register<facet extends keyof RegisterFacetTypeMap>(facet: facet, facetOptions: RegisterFacetTypeMap[facet]) {
     if (curModule) {
-      console.log("MOD Register: " + curModule + ":" + facetOptions.name + " " + facet);
+      if (sanitize.hasOwnProperty(facet)) {
+        const {errors, data} = sanitize[facet](facetOptions);
+        const facetId = curModule + ":" + facetOptions.name;
+        data.facetId = facetId;
+
+        const conflict = !!getFacetById(facet, facetId);
+
+        if (errors.length || conflict) {
+          if (conflict) {
+            errors.push("Facet conflict: " + facetId + " already exists");
+          }
+
+          console.error("Errors processing " + facet + " " + facetId + "\n" + errors.join("\n") + "\n");
+        } else {
+          registerFacet(facet, facetId, <any>data);
+          console.log("Registered " + facet + " " + facetId);
+        }
+      } else {
+        console.error("Error loading " + curModule + ": No such facet \"" + facet + "\"");
+      }
     }
   }
 
-  static genericResolver(...args: any[]) {
+  static genericResolver(name: string, url: string, done: (data: any) => void): boolean {
+    const resolver = <GenericResolver> getFacet("genericresolver", name);
 
+    if (resolver) {
+      resolver.resolve(url, done);
+    }
+
+    return !!resolver;
   }
 });
 

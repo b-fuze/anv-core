@@ -1,9 +1,11 @@
-import {Task} from "./tasks";
+import {Task, crud} from "./tasks";
 
 export interface Tick {
-  interval: number;
+  smallestInterval: number;
+  intervals: number[];
+  intervalsIterations: number[];
+  startTime: number;
   tickId: NodeJS.Timer;
-  tasks: Task[];
   ticking: boolean;
 
   tick(this: Tick): void;
@@ -11,15 +13,39 @@ export interface Tick {
   stop(this: Tick): void;
 }
 
-export function startTick(tasks: Task[], interval = 1000): Tick {
+export interface TickIntervalFlags {
+  [interval: string]: boolean;
+}
+
+export function startTick(intervals = [1000], callback: (tasks: Task[], intervals: TickIntervalFlags) => void): Tick {
+  const intervalsSorted = Array.from(new Set(intervals)).sort((a, b) => a - b);
+
   const tickData: Tick = {
-    interval,
+    smallestInterval: intervalsSorted[0],
+    intervals: intervalsSorted,
+    intervalsIterations: intervalsSorted.map(i => -1),
+    startTime: Date.now(),
     tickId: null,
-    tasks: tasks,
     ticking: true,
 
     tick() {
-      tickIteration(this.tasks);
+      // Check if each larger interval has passed
+      const startTime = this.startTime;
+      const totalTime = Date.now() - startTime;
+      const intervalFlags: TickIntervalFlags = {
+        [this.smallestInterval]: true,
+      };
+
+      for (let i=1; i<this.intervals.length; i++) {
+        const interval = this.intervals[i];
+        const lastTime = this.intervalsIterations[i];
+        const times = Math.floor(totalTime / interval);
+
+        intervalFlags[interval] = times > lastTime;
+        this.intervalsIterations[i] = times;
+      }
+
+      callback(crud.getTasks(), intervalFlags);
     },
 
     start() {
@@ -28,7 +54,7 @@ export function startTick(tasks: Task[], interval = 1000): Tick {
 
       this.tickId = setInterval(() => {
         this.tick();
-      }, this.interval);
+      }, this.smallestInterval);
     },
 
     stop() {
@@ -38,10 +64,4 @@ export function startTick(tasks: Task[], interval = 1000): Tick {
   };
 
   return tickData;
-}
-
-function tickIteration(tasks: Task[]) {
-  for (const task of tasks) {
-    
-  }
 }

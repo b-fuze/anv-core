@@ -10,6 +10,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const anv_1 = require("anv");
+const sanitize_1 = require("./sanitize");
+const facets_1 = require("./facets");
 let curModule = null;
 exports.modules = {};
 exports.validModule = /[a-zA-Z\d-]\.mod\.js/;
@@ -17,10 +19,33 @@ exports.validModule = /[a-zA-Z\d-]\.mod\.js/;
 anv_1.setInstance(class {
     static register(facet, facetOptions) {
         if (curModule) {
-            console.log("MOD Register: " + curModule + ":" + facetOptions.name + " " + facet);
+            if (sanitize_1.sanitize.hasOwnProperty(facet)) {
+                const { errors, data } = sanitize_1.sanitize[facet](facetOptions);
+                const facetId = curModule + ":" + facetOptions.name;
+                data.facetId = facetId;
+                const conflict = !!facets_1.getFacetById(facet, facetId);
+                if (errors.length || conflict) {
+                    if (conflict) {
+                        errors.push("Facet conflict: " + facetId + " already exists");
+                    }
+                    console.error("Errors processing " + facet + " " + facetId + "\n" + errors.join("\n") + "\n");
+                }
+                else {
+                    facets_1.registerFacet(facet, facetId, data);
+                    console.log("Registered " + facet + " " + facetId);
+                }
+            }
+            else {
+                console.error("Error loading " + curModule + ": No such facet \"" + facet + "\"");
+            }
         }
     }
-    static genericResolver(...args) {
+    static genericResolver(name, url, done) {
+        const resolver = facets_1.getFacet("genericresolver", name);
+        if (resolver) {
+            resolver.resolve(url, done);
+        }
+        return !!resolver;
     }
 });
 function loadModules(curPath, recursive = false, base = curPath, first = true) {

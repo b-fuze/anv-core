@@ -46,6 +46,7 @@ class Task {
         this.url = "";
         this.active = false;
         this.remove = false; // Whether to remove this task on the next tick
+        this.currentDl = 0;
         this.id = tasks.length;
         tasks.push(this);
         this.providerId = providerId;
@@ -64,20 +65,43 @@ var MediaStatus;
 })(MediaStatus = exports.MediaStatus || (exports.MediaStatus = {}));
 ;
 class Media {
-    constructor(title, fileName, taskMediaList) {
+    constructor(title, fileName, taskMediaList, taskId) {
         this.selected = true;
         this.status = MediaStatus.IDLE;
         this.bytes = 0;
         this.size = null;
+        this.facetId = null;
         this.sources = [];
         this.source = 0;
         this.sourceAttempts = 0;
         this.exhuastedSources = false;
+        this.bufferedBytes = 0; // Cleared every tick, used to calculate download speed
+        this.speed = 0;
         this.id = exports.media.length;
         this.listId = taskMediaList.length;
         exports.media.push(this);
         this.title = title;
         this.fileName = fileName;
+        this.taskId = taskId;
+    }
+    start() {
+        if (this.status !== MediaStatus.IDLE && this.status !== MediaStatus.PAUSED) {
+            return;
+        }
+        // FIXXX
+        this.request = someNewRequest();
+        this.getTask().currentDl++;
+        this.status = MediaStatus.ACTIVE;
+    }
+    stop(finished = false) {
+        if (this.status !== MediaStatus.ACTIVE) {
+            return;
+        }
+        this.getTask().currentDl--;
+        this.status = MediaStatus.PAUSED;
+    }
+    getTask() {
+        return exports.crud.getTask(this.taskId);
     }
 }
 exports.Media = Media;

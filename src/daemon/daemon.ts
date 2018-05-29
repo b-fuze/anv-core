@@ -4,6 +4,8 @@ import {state} from "./state";
 import {Task, crud} from "./tasks";
 import {Connection, listen} from "./connection";
 import {loadModules} from "./modules";
+import {clock} from "./clock";
+import {facetStore} from "./facets";
 
 const args = minimist(process.argv.slice(2));
 
@@ -14,8 +16,19 @@ if (args.v || args.verbose) {
 // Change to current dir
 process.chdir(path.dirname(process.argv[1]));
 
-// Listen for clients
+// Load modules
+loadModules("../modules", true);
 
+if (args.modules) {
+  // Load extra modules
+  loadModules(args.modules);
+  // TODO: Check this
+}
+
+// Start ticking
+const mainClock = clock();
+
+// Listen for clients
 function listenWS() {
   const validAddress = /^\d+\.\d+\.\d+\.\d+$/;
   const validPort = /^\d+$/;
@@ -44,14 +57,4 @@ if (args.ipc) {
 
 if (args.ws) {
   listenWS();
-}
-
-// Load modules
-
-loadModules("../modules", true);
-
-if (args.modules) {
-  // Load extra modules
-  loadModules(args.modules);
-  // TODO: Check this
 }
