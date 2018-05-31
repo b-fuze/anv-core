@@ -11,9 +11,9 @@ register("genericresolver", {
   resolve(url, done) {
     request(url, (err, res, body) => {
       if (!err) {
-        done(body);
+        done(null, body);
       } else {
-        throw new Error(err);
+        done(err);
       }
     });
   }
@@ -24,14 +24,27 @@ register("genericresolver", {
   description: "Basic ANV dom",
   weight: 0,
   resolve(url, done) {
-    genericResolver("basic", url, data => {
+    genericResolver("basic", url, (err, data) => {
       // @ts-ignore
-      const dom = JSDOM(data);
+      const dom = new JSDOM(data);
       const boundjSh = jSh.bind(dom.window.document);
       boundjSh.dom = dom;
+      boundjSh.html = data;
 
-      done(boundjSh);
+      done(null, boundjSh);
     });
+  }
+});
+
+register("genericresolver", {
+  name: "basicurl",
+  description: "Basic ANV url",
+  weight: 0,
+  resolve(url, done) {
+
+    setTimeout(() => {
+      done(null, url);
+    }, 0);
   }
 });
 
@@ -39,12 +52,12 @@ register("streamresolver", {
   name: "basic",
   description: "Basic ANV generic request stream resolver",
   weight: 0,
-  resolve(url, bytes, out) {
+  resolve(url, bytes, out, options) {
     const req = request({
       url,
-      headers: {
+      headers: Object.assign({
         "Byte-Range": `bytes=${ bytes }-`,
-      }
+      }, options && options.headers ? options.headers : {})
     // @ts-ignore
     }).pipe(out);
 

@@ -78,11 +78,11 @@ register("provider", {
   ],
   validUrl(url, list) { },
   tiers: [
-    "m:mirror1",
-    "m:mirror2",
-    "s:streamresolver1",
-    "s:streamresolver2",
-    "u:uploader"
+    ["mirror1", "Mirror 1"],
+    ["mirror2", "Mirror 2"],
+    ["streamresolver1", "Stream Resolver 1"],
+    ["streamresolver2", "Stream Resolver 2"],
+    ["uploader", "Uploader"]
   ],
   mediaList(metaMediaList) { },
   mediaSource(metaMediaSource, direct) { },
@@ -121,12 +121,12 @@ Anime site example: metaMediaList would be the HTML content of the anime page an
     - url: `string`
     - list: `boolean` whether the url is for a list or source
     - _Return:_ `boolean`
-  - **tiers** `string[]` _Optional._
-    - Array of tiers of different mirrors/streams (if the provider provided direct access to streams)/uploaders. This is a form of ranking the various sources available for a given media to determine which the user deems the more optimal source for ANV to start downloading with.
+  - **tiers** `[string, string][]` _Optional._
+    - Array of tiers of different mirrors/streams (if the provider provided direct access to streams)/uploaders. The first string can only be alphanumeric, the second is a display string. This is a form of ranking the various sources available for a given media to determine which the user deems the more optimal source for ANV to start downloading with.
   - **mediaList(metaMediaList)**
     - metaMediaList: `any`
       - Array data returned from the generic resolver
-    - _Return:_ If `mediaSource(...)` isn't omitted, array of URLs to media source items which can be used with `mediaSource(...)` request. Otherwise an array of mediaSourceExample's (see below)
+    - _Return:_ providerExample (see below)
   - **mediaSource(metaMediaSource, direct)** _Optional._
     - metaMediaSource: `any`
       - Data returned from the generic resolver
@@ -139,17 +139,43 @@ Anime site example: metaMediaList would be the HTML content of the anime page an
     - _Return:_ Array of URLs which providers can use to load a `mediaList`
 
 ```js
+providerExample: {
+  // Title of the new task, used to make the new folder name. Include
+  // any fancy characters etc, they'll be stripped automatically when
+  // necessary
+  title: "Task title",
+
+  // Optional. URL to a cover picture for the new task
+  cover: "uri://to/cover/picture",
+
+  // Array of mediaSourceExamples
+  sources: [
+    mediaSourceExample,
+    mediaSourceExample,
+    ...
+  ]
+}
+
 mediaSourceExample: [{
+  // A stream url directly to a resource
   type: "stream",
   resolver: "streamresolver",
+  title: "Title of mediasource",
+  // Number is a unique string to represent the media, if not present the ANV Media's index in the task will be used
+  number: "10-11",
   url: "uri://host/stream.mp4",
   tiers: [ "uploader", "server", "..." ]
 }, {
   type: "mirror",
+  title: "Title of source",
+  number: "10-11",
   url: "uri://host/media-page",
   tiers: [ "uploader", "server", "..." ]
 }, {
+  // A url to a page to run through the provider's mediaSource() method
   type: "mediasource",
+  title: "Title of source",
+  number: "10-11",
   url: "uri://provider/media-src-page",
   tiers: [ "uploader", "server", "..." ]
 }]
@@ -176,7 +202,7 @@ register("mirror", {
     "360p",
     "720p",
   ],
-  media(metaMediaPage, tier) { }
+  media(metaMediaPage, tier, url) { }
 })
 ```
 #### Mirror options
@@ -208,11 +234,22 @@ register("mirror", {
     - _Return:_ `boolean`
   - **tiers** `string[]` _Optional._
     - Array of generic tiers for the mirror. This is a form of ranking the various tier sources available from the mirror to determine which the user deems the more optimal source for ANV to start downloading with.
-  - **media(metaMediaPage, tier)**
+  - **media(metaMediaPage, tier, url)**
     - metaMediaPage: `any`
       - Media page returned from the generic resolver
     - tier: `string | null`
-    - _Return:_ Direct url to media (e.g. `uri://host/media.mp4`) to be passed to a stream resolver
+    - url: `string`
+    - _Return:_ `string` Direct url to media (e.g. `uri://host/media.mp4`) to be passed to a stream resolver, or a mirrorMediaExample (see below)
+```js
+mirrorMediaExample: {
+  url: "uri://some/resource.mp4",
+
+  // These options are sent to the stream resolver
+  options: {
+    Header: "header-content",
+  }
+}
+```
 
 ### Generic resolver facet
 ```js
@@ -246,7 +283,7 @@ register("streamresolver", {
   description: "My Stream Resolver",
   weight: 0,
   external: false,
-  resolve(url, out, info) {
+  resolve(url, out, info, options) {
     const req = request(url)
 
     return {
@@ -280,9 +317,11 @@ register("streamresolver", {
         - bytes: `number`
           - Bytes saved
       - Function to call when `external` is true to inform ANV of the status of the download. Has no effect if `external` false.
+    - options: `object`
+      - An optional options object for headers or whatever the stream resolver accepts
     - _Return:_ `object`
       - stop: `function`
-        - Called by ANV to stop downloading (if bytes are still)
+        - Called by ANV to stop downloading (if bytes are still) <!-- FIXME -->
 
 ### Class: StreamResolverWritable
 Inherits `Writable` stream class

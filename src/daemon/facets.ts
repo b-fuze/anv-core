@@ -1,3 +1,4 @@
+import {parse} from "url";
 import {
   ProviderFacet as Provider,
   MirrorFacet as Mirror,
@@ -10,6 +11,9 @@ export {
   MirrorFacet as Mirror,
   GenericResolverFacet as GenericResolver,
   StreamResolverFacet as StreamResolver,
+  MediaSourceItem,
+  ProviderItem,
+  MirrorResult,
 } from "anv";
 
 export enum Facet {
@@ -91,6 +95,7 @@ interface FacetMap {
 }
 
 // Facet tiers
+
 export interface FacetTiers {
   mirror: {
     [facetId: string]: string[];
@@ -102,6 +107,23 @@ export interface FacetTiers {
 }
 
 export const facetTiers = {
+  mirror: {},
+  provider: {},
+}
+
+// Mirror and provider host maps
+
+export interface FacetHostMap {
+  mirror: {
+    [host: string]: string;
+  }
+
+  provider: {
+    [host: string]: string;
+  }
+}
+
+export const facetHostMap: FacetHostMap = {
   mirror: {},
   provider: {},
 }
@@ -124,6 +146,10 @@ export function registerFacet<K extends keyof FacetMap>(facet: K, facetId: strin
   // Load tiers
   if (facet === "mirror" || facet === "provider") {
     (<any>facetTiers)[facet][facetId] = Object.keys((<any>facetData).tiers);
+
+    for (const host of (<any>facetData).hosts as string[]) {
+      (<any>facetHostMap)[facet][host] = facetData.name;
+    }
   }
 }
 
@@ -133,4 +159,20 @@ export function getFacet<K extends keyof FacetMap>(facet: K, facetName: string):
 
 export function getFacetById<K extends keyof FacetMap>(facet: K, facetId: string): FacetMap[K] {
   return facetIdMap[facet][facetId] || null;
+}
+
+export function getFacetByHost<K extends keyof FacetMap>(facet: K, url: string): FacetMap[K] {
+  const parsed = parse(url);
+
+  if (!parsed.host) {
+    return null;
+  }
+
+  const facetName: string = (<any>facetHostMap)[facet][parsed.host];
+
+  if (!facetName) {
+    return null;
+  }
+
+  return getFacet(facet, facetName);
 }

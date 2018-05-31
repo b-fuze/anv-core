@@ -1,4 +1,5 @@
 import {deepCopy} from "./utils";
+import {FacetTiers} from "./facets";
 
 export const state = {
   verbose: false,
@@ -16,6 +17,14 @@ export const state = {
     minimalFileName: true,
     autoStart: false,
     ignoreCaches: false,
+    numberPad: true,
+    padMinLength: 2, // Forced padding regardless of how little media the task has, 0 is disabled
+    basicGenericResolver: "basic",
+    basicStreamResolver: "basic",
+    tiers: <FacetTiers> {
+      mirror: {},
+      provider: {},
+    },
   }
 };
 

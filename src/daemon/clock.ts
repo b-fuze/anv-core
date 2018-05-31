@@ -2,8 +2,12 @@ import {state, tmpState} from "./state";
 import {Task, MediaStatus} from "./tasks";
 import {startTick} from "./tick";
 
+function taskPendingCount(task: Task): number {
+  return task.list.filter(m => m.selected && m.status !== MediaStatus.FINISHED).length
+}
+
 export function clock() {
-  const clock = startTick([50, state.tickDelay], (tasks, intervals) => {
+  const clock = startTick([50, state.tickDelay, 2000], (tasks, intervals) => {
     let exhaustedTasks = false;
 
     function addMoreMedia(tasks: Task[], limit: number) {
@@ -19,7 +23,7 @@ export function clock() {
             }
           }
 
-          if (task.currentDl < task.list.filter(m => m.selected).length) {
+          if (task.currentDl < taskPendingCount(task)) {
             exhaustedTasks = false;
           }
 
@@ -37,7 +41,7 @@ export function clock() {
 
     for (const task of tasks) {
       if (!exhaustedTasks && !state.maxGlobalConcurrentDl && !state.limitOnlyGlobal) {
-        while (!exhaustedTasks && task.currentDl < task.list.filter(m => m.selected).length) {
+        while (!exhaustedTasks && task.currentDl < taskPendingCount(task)) {
           exhaustedTasks = true;
           addMoreMedia([task], 1);
         }
@@ -45,6 +49,10 @@ export function clock() {
 
       if (intervals[state.tickDelay]) {
 
+      }
+
+      if (intervals[2000]) {
+        
       }
     }
   });

@@ -32,7 +32,10 @@ function validStructure(input, output, structure) {
                     }
                     // Check the values of the array items
                     else if (inValueType === "array") {
-                        const validArray = inValue.every(item => utils_1.type(item) === valueTypes[inValueTypeIndex][1]);
+                        let validArray = true;
+                        if (valueTypes[inValueTypeIndex][1]) {
+                            validArray = inValue.every(item => utils_1.type(item) === valueTypes[inValueTypeIndex][1]);
+                        }
                         if (validArray) {
                             output[key] = inValue.slice();
                         }
@@ -113,11 +116,19 @@ class sanitize {
                 }],
             hosts: [true, "array:string"],
             validUrl: [true, "function:2"],
-            tiers: [false, {}, {}],
+            tiers: [false, "array", []],
             mediaList: [true, "function:1"],
             mediaSource: [false, "function:2"],
             search: [false, "function:1"],
         });
+        if (Array.isArray(output.tiers)) {
+            for (const tier of output.tiers) {
+                if (!Array.isArray(tier) || tier.length !== 2 || (typeof tier[0] !== "string" || typeof tier[1] !== "string")) {
+                    errors.push("Tiers should be an array of 2 length tuples of strings");
+                    break;
+                }
+            }
+        }
         validationErrors = validationErrors.concat(errors);
         return {
             errors: validationErrors,
@@ -138,7 +149,7 @@ class sanitize {
             hosts: [true, "array:string"],
             validUrl: [true, "function:1"],
             tiers: [false, {}, {}],
-            media: [true, "function:2"],
+            media: [true, "function:3"],
         });
         validationErrors = validationErrors.concat(errors);
         return {
@@ -167,7 +178,7 @@ class sanitize {
         const { errors, output } = validStructure(data, validData, {
             name: [true, "string"],
             description: [false, "string", null],
-            resolve: [true, "function:3"],
+            resolve: [true, "function:4"],
         });
         validationErrors = validationErrors.concat(errors);
         return {

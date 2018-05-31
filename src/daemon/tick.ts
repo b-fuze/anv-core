@@ -1,4 +1,5 @@
 import {Task, crud} from "./tasks";
+import {Component, StateModel} from "lces";
 
 export interface Tick {
   smallestInterval: number;
@@ -7,6 +8,7 @@ export interface Tick {
   startTime: number;
   tickId: NodeJS.Timer;
   ticking: boolean;
+  event: Component<StateModel, TickEvent>;
 
   tick(this: Tick): void;
   start(this: Tick): void;
@@ -17,8 +19,15 @@ export interface TickIntervalFlags {
   [interval: string]: boolean;
 }
 
+export interface TickEvent {
+  tick: TickIntervalFlags;
+}
+
 export function startTick(intervals = [1000], callback: (tasks: Task[], intervals: TickIntervalFlags) => void): Tick {
   const intervalsSorted = Array.from(new Set(intervals)).sort((a, b) => a - b);
+
+  const event = new Component<StateModel, TickEvent>();
+  event.newEvent("tick");
 
   const tickData: Tick = {
     smallestInterval: intervalsSorted[0],
@@ -27,6 +36,7 @@ export function startTick(intervals = [1000], callback: (tasks: Task[], interval
     startTime: Date.now(),
     tickId: null,
     ticking: true,
+    event,
 
     tick() {
       // Check if each larger interval has passed
@@ -46,6 +56,7 @@ export function startTick(intervals = [1000], callback: (tasks: Task[], interval
       }
 
       callback(crud.getTasks(), intervalFlags);
+      event.triggerEvent("tick", intervalFlags);
     },
 
     start() {

@@ -1,8 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tasks_1 = require("./tasks");
+const lces_1 = require("lces");
 function startTick(intervals = [1000], callback) {
     const intervalsSorted = Array.from(new Set(intervals)).sort((a, b) => a - b);
+    const event = new lces_1.Component();
+    event.newEvent("tick");
     const tickData = {
         smallestInterval: intervalsSorted[0],
         intervals: intervalsSorted,
@@ -10,6 +13,7 @@ function startTick(intervals = [1000], callback) {
         startTime: Date.now(),
         tickId: null,
         ticking: true,
+        event,
         tick() {
             // Check if each larger interval has passed
             const startTime = this.startTime;
@@ -25,6 +29,7 @@ function startTick(intervals = [1000], callback) {
                 this.intervalsIterations[i] = times;
             }
             callback(tasks_1.crud.getTasks(), intervalFlags);
+            event.triggerEvent("tick", intervalFlags);
         },
         start() {
             this.stop();

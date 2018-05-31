@@ -16,6 +16,14 @@ exports.state = {
         minimalFileName: true,
         autoStart: false,
         ignoreCaches: false,
+        numberPad: true,
+        padMinLength: 2,
+        basicGenericResolver: "basic",
+        basicStreamResolver: "basic",
+        tiers: {
+            mirror: {},
+            provider: {},
+        },
     }
 };
 exports.defaultState = utils_1.deepCopy(exports.state);

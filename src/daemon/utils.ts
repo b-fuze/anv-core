@@ -1,3 +1,5 @@
+import {jSh} from "jshorts";
+
 type JSType = "string" | "number" | "boolean" | "undefined" | "null" | "array" | "object" | "function";
 export function type(value: any): JSType {
   const base = typeof value;
@@ -31,4 +33,42 @@ export function deepCopy<InType = any>(obj: InType): InType {
   }
 
   return <InType> copy;
+}
+
+export function getPadding(num: string | number, maxN: number) {
+  const max = maxN + "";
+  const n = num + "";
+
+  if (/^\d+(?:\.\d+)?$/.test(n)) {
+    return jSh.nChars("0", max.length - n.split(".")[0].length) + n;
+  } else if (/^\d+-\d+$/.test(n)) {
+    var split = n.split("-");
+
+    return jSh.nChars("0", max.length - split[0].length) + split[0]
+         + "-"
+         + jSh.nChars("0", max.length - split[1].length) + split[1];
+  }
+  // Weird crap, yay. :|
+  else {
+    return " " + n;
+  }
+}
+
+export function getByteSuffix(bytes: number): string {
+  var kib = 1024;
+  var mib = kib * 1024;
+  var gib = mib * 1024;
+  var str;
+
+  if (bytes > gib) {
+    str = Math.round(bytes / gib) + " GiB";
+  } else if (bytes > mib) {
+    str = Math.round(bytes / mib) + " MiB";
+  } else if (bytes > kib) {
+    str = Math.round(bytes / kib) + " KiB";
+  } else {
+    str = bytes + " B";
+  }
+
+  return str;
 }

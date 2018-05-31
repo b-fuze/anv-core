@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const url_1 = require("url");
 var Facet;
 (function (Facet) {
     Facet["Provider"] = "provider";
@@ -29,6 +30,10 @@ exports.facetTiers = {
     mirror: {},
     provider: {},
 };
+exports.facetHostMap = {
+    mirror: {},
+    provider: {},
+};
 function registerFacet(facet, facetId, facetData) {
     if (!exports.facetStore[facet][facetData.name]) {
         exports.facetStore[facet][facetData.name] = [];
@@ -44,6 +49,9 @@ function registerFacet(facet, facetId, facetData) {
     // Load tiers
     if (facet === "mirror" || facet === "provider") {
         exports.facetTiers[facet][facetId] = Object.keys(facetData.tiers);
+        for (const host of facetData.hosts) {
+            exports.facetHostMap[facet][host] = facetData.name;
+        }
     }
 }
 exports.registerFacet = registerFacet;
@@ -55,3 +63,15 @@ function getFacetById(facet, facetId) {
     return exports.facetIdMap[facet][facetId] || null;
 }
 exports.getFacetById = getFacetById;
+function getFacetByHost(facet, url) {
+    const parsed = url_1.parse(url);
+    if (!parsed.host) {
+        return null;
+    }
+    const facetName = exports.facetHostMap[facet][parsed.host];
+    if (!facetName) {
+        return null;
+    }
+    return getFacet(facet, facetName);
+}
+exports.getFacetByHost = getFacetByHost;
