@@ -107,10 +107,17 @@ var MediaStatus;
 (function (MediaStatus) {
     MediaStatus["IDLE"] = "IDLE";
     MediaStatus["ACTIVE"] = "ACTIVE";
+    MediaStatus["PENDING"] = "PENDING";
     MediaStatus["PAUSED"] = "PAUSED";
     MediaStatus["FINISHED"] = "FINISHED";
 })(MediaStatus = exports.MediaStatus || (exports.MediaStatus = {}));
 ;
+// FIXME: Multiple terms for the same things
+exports.mediaSourceFacetMap = {
+    direct: "provider",
+    mirror: "mirror",
+    stream: "streamresolver",
+};
 class Media {
     constructor(title, fileName, taskMediaList, taskId) {
         this.selected = true;
@@ -134,25 +141,44 @@ class Media {
         this.fileName = fileName;
         this.taskId = taskId;
     }
+    setStatus(status) {
+        if (status !== this.status) {
+            const task = this.getTask();
+            this.status = status;
+            switch (status) {
+                case MediaStatus.IDLE:
+                case MediaStatus.PAUSED:
+                case MediaStatus.PENDING:
+                case MediaStatus.FINISHED:
+                    task.currentDl--;
+                    state_1.tmpState.currentDl--;
+                    break;
+                case MediaStatus.ACTIVE:
+                    task.currentDl++;
+                    state_1.tmpState.currentDl++;
+                    break;
+            }
+        }
+    }
     start() {
-        if (this.status !== MediaStatus.IDLE && this.status !== MediaStatus.PAUSED) {
+        if (this.status !== MediaStatus.IDLE
+            && this.status !== MediaStatus.PAUSED
+            && this.status !== MediaStatus.PENDING) {
             return;
         }
-        this.getTask().currentDl++;
-        this.status = MediaStatus.ACTIVE;
+        this.setStatus(MediaStatus.ACTIVE);
         const source = this.sources[this.source];
         this.resolveSource(source);
     }
     stop(finished = false) {
-        if (this.status !== MediaStatus.ACTIVE) {
+        if (this.status !== MediaStatus.ACTIVE && this.status !== MediaStatus.FINISHED) {
             return;
         }
         if (this.request) {
             this.request.stop();
             this.request = null;
         }
-        this.getTask().currentDl--;
-        this.status = MediaStatus.PAUSED;
+        this.setStatus(MediaStatus.PAUSED);
     }
     resolveSource(source) {
         switch (source.type) {
@@ -168,11 +194,11 @@ class Media {
                             switch (resSource.type) {
                                 case "mediasource":
                                     const gresolver = facets_1.getFacetByHost("provider", resSource.url);
-                                    box = new MediaSourceDirect(resSource.url, resSource.resolver, gresolver.facetId);
+                                    box = new MediaSourceDirect(resSource.url, gresolver.name, gresolver.facetId);
                                     break;
                                 case "mirror":
                                     const mirror = facets_1.getFacetByHost("mirror", resSource.url);
-                                    box = new MediaSourceMirror(resSource.url, resSource.resolver, mirror.facetId);
+                                    box = new MediaSourceMirror(resSource.url, mirror.name, mirror.facetId);
                                     break;
                                 case "stream":
                                     const sresolver = facets_1.getFacet("streamresolver", resSource.resolver);
@@ -186,7 +212,19 @@ class Media {
                         source.resolved = true;
                         // Reresolve
                         this.source++;
-                        this.resolveSource(this.sources[this.source]);
+                        const curSource = this.sources[this.source];
+                        const facet = facets_1.getFacetById(exports.mediaSourceFacetMap[curSource.type], curSource.facetId);
+                        if (!facet.delay || (Date.now() - facet.lastUse) > facet.delay) {
+                            if (exports.mediaSourceFacetMap[curSource.type] === "mirror") {
+                                console.log("RES MEDIA #" + this.id, " delay:" + facet.delay + " lastUse:" + (Date.now() - facet.lastUse));
+                            }
+                            // We can use this source now
+                            this.resolveSource(curSource);
+                        }
+                        else {
+                            // We have to wait a while for this source
+                            this.setStatus(MediaStatus.PENDING);
+                        }
                     }
                 });
                 break;
@@ -213,6 +251,7 @@ class Media {
                 break;
         }
     }
+    // FIXME: Tidy this up
     reattemptSources() {
         const media = this;
         const task = media.getTask();
@@ -227,7 +266,7 @@ class Media {
                 media.resolveSource(media.sources[media.source]);
             }
             else {
-                media.status = MediaStatus.FINISHED;
+                media.setStatus(MediaStatus.FINISHED);
                 media.exhuastedSources = true;
                 console.log(`Exhausted all sources for Media #${media.id} - ${media.fileName}`);
             }

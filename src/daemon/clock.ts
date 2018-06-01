@@ -23,13 +23,25 @@ const mediaFacetMap = {
   [MediaSourceType.Stream]: "streamresolver",
 }
 
+function taskActiveCount(task: Task) {
+  return task.list.filter(m => (m.status === MediaStatus.ACTIVE)).length;
+}
+
+function getTasksByFairness(tasks: Task[]) {
+  return (state.taskFairness
+                  ? tasks.slice().sort((a, b) => taskActiveCount(a) - taskActiveCount(b))
+                  : tasks.slice());
+}
+
 function taskPendingCount(task: Task, delayMap: DelayMap): number {
   return task.list.filter(m => {
     const eligible = m.selected && m.status !== MediaStatus.FINISHED && m.status !== MediaStatus.ACTIVE;
 
     if (eligible) {
+      let oldValue = null;
+
       if (delayMap.media.hasOwnProperty(m.id)) {
-        return delayMap.media[m.id].delay;
+        oldValue = delayMap.media[m.id].delay;
       }
 
       const source = m.sources[m.source];
@@ -44,7 +56,7 @@ function taskPendingCount(task: Task, delayMap: DelayMap): number {
       }
 
       delayMap.media[m.id] = {
-        delay: (Date.now() - lastUse) > (<any> facet).delay,
+        delay: oldValue !== null && !oldValue ? oldValue : (Date.now() - lastUse) > (<any> facet).delay,
         facet,
       }
 
@@ -62,25 +74,33 @@ export function clock() {
     let exhaustedTasks = false;
 
     function addMoreMedia(tasks: Task[], limit: number) {
+      taskLoop:
       for (const task of tasks) {
+        taskPendingCount(task, delayMap);
+
         if (task.active) {
           mediaLoop:
           for (const media of task.list) {
-            if (media.selected && (media.status === MediaStatus.IDLE || media.status === MediaStatus.PAUSED)) {
-              media.start();
-              tmpState.currentDl++;
+            if (media.selected) {
+              if (media.status !== MediaStatus.FINISHED
+                  && media.status !== MediaStatus.ACTIVE
+                  && delayMap.media[media.id].delay) {
+                media.start();
 
-              limit--;
-              break mediaLoop;
+                limit--;
+                break mediaLoop;
+              } else if (media.status === MediaStatus.PENDING) {
+                limit--;
+              }
+            }
+
+            if (!limit) {
+              continue taskLoop;
             }
           }
 
           if (task.currentDl < taskPendingCount(task, delayMap)) {
             exhaustedTasks = false;
-          }
-
-          if (!limit) {
-            return;
           }
         }
       }
@@ -88,10 +108,10 @@ export function clock() {
 
     while (!exhaustedTasks && state.maxGlobalConcurrentDl && tmpState.currentDl < state.maxGlobalConcurrentDl) {
       exhaustedTasks = true;
-      addMoreMedia(tasks, state.maxGlobalConcurrentDl - tmpState.currentDl);
+      addMoreMedia(getTasksByFairness(tasks), state.maxGlobalConcurrentDl - tmpState.currentDl);
     }
 
-    for (const task of tasks) {
+    for (const task of getTasksByFairness(tasks)) {
       if (!exhaustedTasks && !state.maxGlobalConcurrentDl && !state.limitOnlyGlobal) {
         while (!exhaustedTasks && task.currentDl < state.maxConcurrentDl && taskPendingCount(task, delayMap)) {
           exhaustedTasks = true;
@@ -110,15 +130,12 @@ export function clock() {
 
             if (media.bytes === media.size) {
                 media.request = null;
-                media.status = MediaStatus.FINISHED;
+                media.setStatus(MediaStatus.FINISHED);
                 media.outStream.write(media.buffer);
 
                 media.buffer = Buffer.alloc(0);
                 media.bufferedBytes = 0;
                 media.outStream.end();
-
-                task.currentDl--;
-                tmpState.currentDl--;
             } else {
               media.outStream.write(media.buffer);
               media.bytes += bytes;

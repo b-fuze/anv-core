@@ -13,9 +13,10 @@ import {
   getFacetById,
   getFacetByHost,
   facetStore,
+  FacetStore,
 } from "./facets";
 import {resolveProviderSource, resolveMirror} from "./resolve";
-import {state} from "./state";
+import {state, tmpState} from "./state";
 import {deepCopy} from "./utils";
 
 const tasks: Task[] = [];
@@ -142,8 +143,16 @@ export const media: Media[] = [];
 export enum MediaStatus {
   IDLE = "IDLE",
   ACTIVE = "ACTIVE",
+  PENDING = "PENDING",
   PAUSED = "PAUSED",
   FINISHED = "FINISHED",
+};
+
+// FIXME: Multiple terms for the same things
+export const mediaSourceFacetMap = {
+  direct: "provider",
+  mirror: "mirror",
+  stream: "streamresolver",
 };
 
 export interface MediaRequest {
@@ -191,20 +200,43 @@ class Media {
     this.taskId = taskId;
   }
 
+  setStatus(status: MediaStatus) {
+    if (status !== this.status) {
+      const task = this.getTask();
+      this.status = status;
+
+      switch (status) {
+        case MediaStatus.IDLE:
+        case MediaStatus.PAUSED:
+        case MediaStatus.PENDING:
+        case MediaStatus.FINISHED:
+          task.currentDl--;
+          tmpState.currentDl--;
+          break;
+        case MediaStatus.ACTIVE:
+          task.currentDl++;
+          tmpState.currentDl++;
+          break;
+      }
+    }
+  }
+
   start() {
-    if (this.status !== MediaStatus.IDLE && this.status !== MediaStatus.PAUSED) {
+    if (this.status !== MediaStatus.IDLE
+        && this.status !== MediaStatus.PAUSED
+        && this.status !== MediaStatus.PENDING) {
       return;
     }
 
-    this.getTask().currentDl++;
-    this.status = MediaStatus.ACTIVE;
+    this.setStatus(MediaStatus.ACTIVE);
 
     const source = this.sources[this.source];
+
     this.resolveSource(source);
   }
 
   stop(finished = false) {
-    if (this.status !== MediaStatus.ACTIVE) {
+    if (this.status !== MediaStatus.ACTIVE && this.status !== MediaStatus.FINISHED) {
       return;
     }
 
@@ -213,8 +245,7 @@ class Media {
       this.request = null;
     }
 
-    this.getTask().currentDl--;
-    this.status = MediaStatus.PAUSED;
+    this.setStatus(MediaStatus.PAUSED);
   }
 
   resolveSource(source: MediaSource) {
@@ -231,12 +262,12 @@ class Media {
               switch (resSource.type) {
                 case "mediasource":
                   const gresolver = getFacetByHost("provider", resSource.url);
-                  box = new MediaSourceDirect(resSource.url, resSource.resolver, gresolver.facetId);
+                  box = new MediaSourceDirect(resSource.url, gresolver.name, gresolver.facetId);
                   break;
 
                 case "mirror":
                   const mirror = getFacetByHost("mirror", resSource.url);
-                  box = new MediaSourceMirror(resSource.url, resSource.resolver, mirror.facetId);
+                  box = new MediaSourceMirror(resSource.url, mirror.name, mirror.facetId);
                   break;
 
                 case "stream":
@@ -254,7 +285,20 @@ class Media {
 
             // Reresolve
             this.source++;
-            this.resolveSource(this.sources[this.source]);
+
+            const curSource = this.sources[this.source];
+            const facet = getFacetById(<keyof FacetStore> mediaSourceFacetMap[curSource.type], curSource.facetId);
+
+            if (!(<any> facet).delay || (Date.now() - facet.lastUse) > (<any> facet).delay) {
+              if (mediaSourceFacetMap[curSource.type] === "mirror") {
+                console.log("RES MEDIA #" + this.id, " delay:" + (<any>facet).delay + " lastUse:" + (Date.now() - facet.lastUse));
+              }
+              // We can use this source now
+              this.resolveSource(curSource);
+            } else {
+              // We have to wait a while for this source
+              this.setStatus(MediaStatus.PENDING);
+            }
           }
         });
         break;
@@ -287,6 +331,7 @@ class Media {
     }
   }
 
+  // FIXME: Tidy this up
   reattemptSources() {
     const media = this;
     const task = media.getTask();
@@ -303,7 +348,7 @@ class Media {
       if (media.sources[media.source]) {
         media.resolveSource(media.sources[media.source]);
       } else {
-        media.status = MediaStatus.FINISHED;
+        media.setStatus(MediaStatus.FINISHED);
         media.exhuastedSources = true;
         console.log(`Exhausted all sources for Media #${ media.id } - ${ media.fileName }`);
       }

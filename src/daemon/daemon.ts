@@ -97,7 +97,9 @@ instructions.load(taskUrl2, (err, taskId) => {
 });
 
 mainClock.event.on("tick", intervals => {
-  if (intervals[2000]) {
+  if (intervals[1000]) {
+    let printed = false;
+
     for (const task of crud.getTasks()) {
       if (task.active) {
         let downloading = 0;
@@ -112,8 +114,13 @@ mainClock.event.on("tick", intervals => {
 
         if (downloading) {
           console.log(`TASK #${ task.id } - ${ downloading } active\nTitle: ${ task.title }\n` + report + "\n");
+          printed = true;
         }
       }
+    }
+
+    if (printed) {
+      console.log("---------------------------------");
     }
   }
 });

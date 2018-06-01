@@ -3,15 +3,16 @@ import {FacetTiers} from "./facets";
 
 export const state = {
   verbose: false,
-  maxConcurrentDl: 2,
-  maxGlobalConcurrentDl: 0,
-  limitOnlyGlobal: false,
+  maxConcurrentDl: 5,
+  maxGlobalConcurrentDl: 5,
+  limitOnlyGlobal: true,
   sourceTimeout: 3000,
   maxSourceRetries: 3,
-  maxBufferSize: 1000000, // bytes
+  // maxBufferSize: 1000000, // bytes TODO: Check the urgency of this
   scanDlDirOnStart: false,
   useGlobalPersistentStateStore: false,
   tickDelay: 1000, // This shouldn't be changeable
+  taskFairness: true,
 
   task: {
     dlPath: null as string,

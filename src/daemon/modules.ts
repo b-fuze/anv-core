@@ -30,6 +30,9 @@ setInstance(class {
 
           console.error("Errors processing " + facet + " " + facetId + "\n" + errors.join("\n") + "\n");
         } else {
+          // Add lastUse
+          data.lastUse = 0;
+
           registerFacet(facet, facetId, <any>data);
           console.log("Registered " + facet + " " + facetId);
         }

@@ -3,15 +3,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("./utils");
 exports.state = {
     verbose: false,
-    maxConcurrentDl: 2,
-    maxGlobalConcurrentDl: 0,
-    limitOnlyGlobal: false,
+    maxConcurrentDl: 5,
+    maxGlobalConcurrentDl: 5,
+    limitOnlyGlobal: true,
     sourceTimeout: 3000,
     maxSourceRetries: 3,
-    maxBufferSize: 1000000,
+    // maxBufferSize: 1000000, // bytes TODO: Check the urgency of this
     scanDlDirOnStart: false,
     useGlobalPersistentStateStore: false,
     tickDelay: 1000,
+    taskFairness: true,
     task: {
         dlPath: null,
         minimalFileName: true,

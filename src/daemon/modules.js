@@ -31,6 +31,8 @@ anv_1.setInstance(class {
                     console.error("Errors processing " + facet + " " + facetId + "\n" + errors.join("\n") + "\n");
                 }
                 else {
+                    // Add lastUse
+                    data.lastUse = 0;
                     facets_1.registerFacet(facet, facetId, data);
                     console.log("Registered " + facet + " " + facetId);
                 }
