@@ -31,6 +31,11 @@ register("mirror", {
     var match = data.match(regex);
     var video = unpack(stripSlashes(match[1]), parseInt(match[2]), parseInt(match[3]), stripSlashes(match[4]).split("|")).match(regex2);
 
-    return video[1];
+    return {
+      url: video[1],
+      options: {
+        noCheckCertificate: true,
+      }
+    };
   }
 });

@@ -35,7 +35,7 @@ export function resolveProvider(url: string, done: (err: string, metadata: Provi
   }
 }
 
-export function resolveProviderSource(url: string, done: (err: string, sources: MediaSourceItem[]) => void) {
+export function resolveProviderSource(url: string, direct: boolean, done: (err: string, sources: MediaSourceItem[]) => void) {
   const parsed = parse(url);
 
   if (!parsed.host) {
@@ -51,7 +51,7 @@ export function resolveProviderSource(url: string, done: (err: string, sources: 
       if (gresolver) {
         gresolver.resolve(url, (err, data) => {
           if (!err) {
-            const sources = provider.mediaSource(data, true);
+            const sources = provider.mediaSource(data, direct);
             done(null, sources);
           } else {
             done(err, null);

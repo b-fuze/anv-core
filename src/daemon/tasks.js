@@ -157,7 +157,7 @@ class Media {
     resolveSource(source) {
         switch (source.type) {
             case "direct":
-                resolve_1.resolveProviderSource(source.url, (err, sources) => {
+                resolve_1.resolveProviderSource(source.url, this.sources.length !== 1, (err, sources) => {
                     if (err) {
                         console.log("ANV Provider Error: ", err);
                         this.reattemptSources();
@@ -220,7 +220,7 @@ class Media {
         console.log("ANV Stream Error for source #" + media.source + " in Media #" + media.id + " - " + media.fileName);
         if (media.sourceAttempts >= state_1.state.maxSourceRetries) {
             // Give up
-            console.log(`Skipping bad source #${media.source} in Media #${media.id} - ${media.fileName}`);
+            console.log(`Skipping bad source #${media.source} (${media.sources[media.source].url}) in Media #${media.id} - ${media.fileName}`);
             media.sourceAttempts = 0;
             media.source++;
             if (media.sources[media.source]) {

@@ -54,13 +54,18 @@ register("streamresolver", {
   name: "basic",
   description: "Basic ANV generic request stream resolver",
   weight: 0,
-  resolve(url, bytes, out, info, options) {
+  resolve(url, bytes, out, info, optionsObj) {
+    const options = optionsObj || {};
+
     const req = request({
       url,
       // @ts-ignore
       headers: Object.assign({
         "Byte-Range": `bytes=${ bytes }-`,
-      }, options && options.headers ? options.headers : {})
+      }, options.headers ? options.headers : {}),
+      agentOptions: {
+        rejectUnauthorized: options.hasOwnProperty("noCheckCertificate") ? !options.noCheckCertificate : true,
+      }
     })
     .on("error", err => {
       out.error(err);

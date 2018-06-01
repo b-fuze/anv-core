@@ -4,8 +4,8 @@ const utils_1 = require("./utils");
 exports.state = {
     verbose: false,
     maxConcurrentDl: 2,
-    maxGlobalConcurrentDl: 3,
-    limitOnlyGlobal: true,
+    maxGlobalConcurrentDl: 0,
+    limitOnlyGlobal: false,
     sourceTimeout: 3000,
     maxSourceRetries: 3,
     maxBufferSize: 1000000,

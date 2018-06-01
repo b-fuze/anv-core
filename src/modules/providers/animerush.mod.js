@@ -25,7 +25,8 @@ register("provider", {
     if (list) {
       return /^https?:\/\/www\.animerush\.tv\/+anime\/+[a-zA-Z\d-]+\/*$/.test(url);
     } else {
-      return /^https?:\/\/www\.animerush\.tv\/+[a-zA-Z\d-]+-episode(-\d+(\.\d+)?){1,2}\/*$/.test(url);
+      // http://www.animerush.tv/Ooyasan-wa-Shishunki-episode-12/mirror-317345/
+      return /^https?:\/\/www\.animerush\.tv\/+[a-zA-Z\d-]+-episode(-\d+(\.\d+)?){1,2}(\/*|\/+mirror-\d+\/*)$/.test(url);
     }
   },
   tiers: [
@@ -65,6 +66,18 @@ register("provider", {
   },
   mediaSource(jSh, direct) {
     const sources = [];
+
+    if (direct) {
+      const mirror = jSh("#episodes .episode_on")[0];
+      const supported = mirror.jSh("h3")[0].jSh(0).textContent.toLowerCase().match(/mp4upload|yourupload/);
+      const hd = mirror.jSh(".hdlogo")[0] ? "-hd" : "";
+
+      return [{
+        type: "mirror",
+        url: jSh("#embed_holder iframe")[0].src,
+        tiers: [supported + hd],
+      }];
+    }
 
     // @ts-ignore
     for (const mirrorDiv of Array.from(jSh("#episodes").childNodes)) {

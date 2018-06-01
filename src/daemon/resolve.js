@@ -24,7 +24,7 @@ function resolveProvider(url, done) {
     }
 }
 exports.resolveProvider = resolveProvider;
-function resolveProviderSource(url, done) {
+function resolveProviderSource(url, direct, done) {
     const parsed = url_1.parse(url);
     if (!parsed.host) {
         done("Invalid url", null);
@@ -36,7 +36,7 @@ function resolveProviderSource(url, done) {
             if (gresolver) {
                 gresolver.resolve(url, (err, data) => {
                     if (!err) {
-                        const sources = provider.mediaSource(data, true);
+                        const sources = provider.mediaSource(data, direct);
                         done(null, sources);
                     }
                     else {
