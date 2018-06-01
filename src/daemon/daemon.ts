@@ -5,7 +5,7 @@ import {Task, MediaStatus, crud} from "./tasks";
 import {Connection, listen} from "./connection";
 import {loadModules} from "./modules";
 import {clock} from "./clock";
-import {facetStore} from "./facets";
+import {facetStore, getFacet} from "./facets";
 import {instructions} from "./clients";
 import {getByteSuffix} from "./utils";
 
@@ -66,6 +66,7 @@ state.task.dlPath = "/home/b-fuse/old/tmp/anv-test";
 
 console.log("ANV & Client test");
 const taskUrl = "http://www.animerush.tv/anime/Ooyasan-wa-Shishunki/";
+const taskUrl2 = "http://www.animerush.tv/anime/Komori-san-wa-Kotowarenai/";
 
 instructions.load(taskUrl, (err, taskId) => {
   if (err) {
@@ -74,9 +75,20 @@ instructions.load(taskUrl, (err, taskId) => {
     const task = crud.getTask(taskId);
 
     task.on("load", load => {
-      console.log("LOADED TASK");
-      console.dir(task, {depth: null});
-      console.log("");
+
+      // Start task
+      task.active = true;
+    });
+  }
+});
+
+instructions.load(taskUrl2, (err, taskId) => {
+  if (err) {
+    console.error(err);
+  } else {
+    const task = crud.getTask(taskId);
+
+    task.on("load", load => {
 
       // Start task
       task.active = true;
@@ -94,12 +106,12 @@ mainClock.event.on("tick", intervals => {
         for (const media of task.list) {
           if (media.status === MediaStatus.ACTIVE) {
             downloading++;
-            report += ` - MEDIA #${ media.id } - ${ Math.floor(100 * (media.bytes / media.size)) }% - ${ getByteSuffix(media.size) } - ${ media.fileName }\n`
+            report += ` - MEDIA #${ media.id } - ${ Math.floor(100 * (media.bytes / media.size)) }% - ${ getByteSuffix(media.size) } - ${ getByteSuffix(media.speed) }/s - ${ media.fileName }\n`;
           }
         }
 
         if (downloading) {
-          console.log(`TASK #${ task.id } - ${ downloading } active\n` + report + "\n");
+          console.log(`TASK #${ task.id } - ${ downloading } active\nTitle: ${ task.title }\n` + report + "\n");
         }
       }
     }

@@ -9,6 +9,8 @@ register("genericresolver", {
   description: "Basic ANV generic request resolver",
   weight: 0,
   resolve(url, done) {
+    console.log("RESOLVE: " + url);
+
     request(url, (err, res, body) => {
       if (!err) {
         done(null, body);
@@ -52,17 +54,33 @@ register("streamresolver", {
   name: "basic",
   description: "Basic ANV generic request stream resolver",
   weight: 0,
-  resolve(url, bytes, out, options) {
+  resolve(url, bytes, out, info, options) {
     const req = request({
       url,
+      // @ts-ignore
       headers: Object.assign({
         "Byte-Range": `bytes=${ bytes }-`,
       }, options && options.headers ? options.headers : {})
+    })
+    .on("error", err => {
+      out.error(err);
+    })
+    .on("response", res => {
+      let size;
+
+      if (size = res.headers["content-length"]) {
+        out.setSize(+size);
+      }
+    })
+    .on("end", arg => {
+      out.end();
+    })
     // @ts-ignore
-    }).pipe(out);
+    .pipe(out);
 
     return {
       stop() {
+        // @ts-ignore
         req.abort();
       }
     }

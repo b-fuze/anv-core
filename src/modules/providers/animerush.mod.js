@@ -12,7 +12,7 @@ register("provider", {
   displayName: "Anime Rush",
   description: "ANV Anime Rush provider",
   weight: 0,
-  delay: 250,
+  delay: 650,
   resolvers: {
     mediaList: "basicdom",
     mediaSource: "basicdom",

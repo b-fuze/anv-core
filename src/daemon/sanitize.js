@@ -145,7 +145,7 @@ class sanitize {
             weight: [false, "number", 0],
             cache: [false, "boolean", false],
             delay: [false, ["number", "function:2"], 500],
-            resolvers: [false, "string", "basic"],
+            resolver: [false, "string", "basic"],
             hosts: [true, "array:string"],
             validUrl: [true, "function:1"],
             tiers: [false, {}, {}],
@@ -178,7 +178,7 @@ class sanitize {
         const { errors, output } = validStructure(data, validData, {
             name: [true, "string"],
             description: [false, "string", null],
-            resolve: [true, "function:4"],
+            resolve: [true, "function:5"],
         });
         validationErrors = validationErrors.concat(errors);
         return {

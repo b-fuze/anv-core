@@ -19,7 +19,7 @@ register("mirror", {
   description: "ANV MP4Upload Mirror",
   weight: 0,
   cache: false,
-  delay: 200,
+  delay: 350,
   resolver: "basic",
   hosts: [
     "mp4upload.com",

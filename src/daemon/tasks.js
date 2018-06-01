@@ -158,30 +158,36 @@ class Media {
         switch (source.type) {
             case "direct":
                 resolve_1.resolveProviderSource(source.url, (err, sources) => {
-                    const boxedSources = sources.map(resSource => {
-                        let box;
-                        switch (resSource.type) {
-                            case "mediasource":
-                                const gresolver = facets_1.getFacetByHost("provider", resSource.url);
-                                box = new MediaSourceDirect(resSource.url, resSource.resolver, gresolver.facetId);
-                                break;
-                            case "mirror":
-                                const mirror = facets_1.getFacetByHost("mirror", resSource.url);
-                                box = new MediaSourceMirror(resSource.url, resSource.resolver, mirror.facetId);
-                                break;
-                            case "stream":
-                                const sresolver = facets_1.getFacet("streamresolver", resSource.resolver);
-                                box = new MediaSourceStream(resSource.url, resSource.resolver, sresolver.facetId);
-                                break;
-                        }
-                        box.parent = source.id;
-                        return box;
-                    });
-                    this.sources.splice.apply(this.sources, [this.source + 1, 0].concat(boxedSources));
-                    source.resolved = true;
-                    // Reresolve
-                    this.source++;
-                    this.resolveSource(this.sources[this.source]);
+                    if (err) {
+                        console.log("ANV Provider Error: ", err);
+                        this.reattemptSources();
+                    }
+                    else {
+                        const boxedSources = sources.map(resSource => {
+                            let box;
+                            switch (resSource.type) {
+                                case "mediasource":
+                                    const gresolver = facets_1.getFacetByHost("provider", resSource.url);
+                                    box = new MediaSourceDirect(resSource.url, resSource.resolver, gresolver.facetId);
+                                    break;
+                                case "mirror":
+                                    const mirror = facets_1.getFacetByHost("mirror", resSource.url);
+                                    box = new MediaSourceMirror(resSource.url, resSource.resolver, mirror.facetId);
+                                    break;
+                                case "stream":
+                                    const sresolver = facets_1.getFacet("streamresolver", resSource.resolver);
+                                    box = new MediaSourceStream(resSource.url, resSource.resolver, sresolver.facetId);
+                                    break;
+                            }
+                            box.parent = source.id;
+                            return box;
+                        });
+                        this.sources.splice.apply(this.sources, [this.source + 1, 0].concat(boxedSources));
+                        source.resolved = true;
+                        // Reresolve
+                        this.source++;
+                        this.resolveSource(this.sources[this.source]);
+                    }
                 });
                 break;
             case "mirror":
@@ -207,17 +213,42 @@ class Media {
                 break;
         }
     }
+    reattemptSources() {
+        const media = this;
+        const task = media.getTask();
+        media.totalAttempts++;
+        console.log("ANV Stream Error for source #" + media.source + " in Media #" + media.id + " - " + media.fileName);
+        if (media.sourceAttempts >= state_1.state.maxSourceRetries) {
+            // Give up
+            console.log(`Skipping bad source #${media.source} in Media #${media.id} - ${media.fileName}`);
+            media.sourceAttempts = 0;
+            media.source++;
+            if (media.sources[media.source]) {
+                media.resolveSource(media.sources[media.source]);
+            }
+            else {
+                media.status = MediaStatus.FINISHED;
+                media.exhuastedSources = true;
+                console.log(`Exhausted all sources for Media #${media.id} - ${media.fileName}`);
+            }
+        }
+        else {
+            // Try again
+            media.sourceAttempts++;
+            console.log(`Reattempt #${media.sourceAttempts} for source #${media.source} in Media #${media.id} - ${media.fileName}`);
+            media.resolveSource(media.sources[media.source]);
+        }
+    }
     startStream(stream) {
-        console.log(stream);
-        // process.exit();
         const sresolver = facets_1.getFacetById("streamresolver", stream.facetId);
         const task = this.getTask();
         const out = new MediaStream(this);
-        this.outStream = fs.createWriteStream(task.dlDir + path.sep + this.fileName, {
-            encoding: "binary",
-        });
+        if (!this.outStream) {
+            this.outStream = fs.createWriteStream(task.dlDir + path.sep + this.fileName);
+        }
         this.lastUpdate = Date.now();
-        this.request = sresolver.resolve(stream.url, out, null, stream.options || {});
+        this.request = sresolver.resolve(stream.url, this.bytes, out, null, stream.options || {});
+        sresolver.lastUse = Date.now();
     }
     getTask() {
         return exports.crud.getTask(this.taskId);
@@ -233,14 +264,17 @@ class MediaStream extends stream_1.Writable {
     setSize(size) {
         this.media.size = size;
     }
+    error(err) {
+        this.end();
+        this.media.reattemptSources();
+    }
     _write(chunk, encoding, callback) {
-        this.media.buffer = Buffer.concat([chunk, this.media.buffer], chunk.length + this.media.buffer.length);
+        this.media.buffer = Buffer.concat([this.media.buffer, chunk], chunk.length + this.media.buffer.length);
         this.media.bufferedBytes += chunk.length;
         // FIXME: Maybe some checks here, maybe not
         callback();
     }
-    _finish(callback) {
-        this.media.request;
+    _final(callback) {
         // TODO: Wrap up things with our Media
         callback();
     }

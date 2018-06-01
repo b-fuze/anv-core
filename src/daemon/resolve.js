@@ -15,6 +15,8 @@ function resolveProvider(url, done) {
                     done(err, null);
                 }
             });
+            provider.lastUse = Date.now();
+            gresolver.lastUse = Date.now();
         }
         else {
             done("No generic resolver found for provider " + provider.facetId, null);
@@ -41,6 +43,8 @@ function resolveProviderSource(url, done) {
                         done(err, null);
                     }
                 });
+                provider.lastUse = Date.now();
+                gresolver.lastUse = Date.now();
             }
             else {
                 done("No generic resolver found for provider " + provider.facetId, null);
@@ -75,6 +79,8 @@ function resolveMirror(url, done, tier = null) {
                     done(err, null);
                 }
             });
+            mirror.lastUse = Date.now();
+            gresolver.lastUse = Date.now();
         }
         else {
             done("No generic resolver found for mirror " + mirror.facetId, null);

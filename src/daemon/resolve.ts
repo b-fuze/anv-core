@@ -21,10 +21,14 @@ export function resolveProvider(url: string, done: (err: string, metadata: Provi
       gresolver.resolve(url, (err, resource) => {
         if (!err) {
           done(null, provider.mediaList(resource));
+
         } else {
           done(err, null);
         }
       });
+
+      provider.lastUse = Date.now();
+      gresolver.lastUse = Date.now();
     } else {
       done("No generic resolver found for provider " + provider.facetId, null);
     }
@@ -53,6 +57,9 @@ export function resolveProviderSource(url: string, done: (err: string, sources: 
             done(err, null);
           }
         });
+
+        provider.lastUse = Date.now();
+        gresolver.lastUse = Date.now();
       } else {
         done("No generic resolver found for provider " + provider.facetId, null);
       }
@@ -83,10 +90,14 @@ export function resolveMirror(url: string, done: (err: string, url: any) => void
         if (!err) {
           const streamUrl = mirror.media(data, tier);
           done(null, streamUrl);
+
         } else {
           done(err, null);
         }
       });
+
+      mirror.lastUse = Date.now();
+      gresolver.lastUse = Date.now();
     } else {
       done("No generic resolver found for mirror " + mirror.facetId, null);
     }

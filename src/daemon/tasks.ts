@@ -12,6 +12,7 @@ import {
   getFacet,
   getFacetById,
   getFacetByHost,
+  facetStore,
 } from "./facets";
 import {resolveProviderSource, resolveMirror} from "./resolve";
 import {state} from "./state";
@@ -220,36 +221,41 @@ class Media {
     switch (source.type) {
       case "direct":
         resolveProviderSource(source.url, (err, sources) => {
-          const boxedSources = sources.map(resSource => {
-            let box: MediaSource;
+          if (err) {
+            console.log("ANV Provider Error: ", err);
+            this.reattemptSources();
+          } else {
+            const boxedSources = sources.map(resSource => {
+              let box: MediaSource;
 
-            switch (resSource.type) {
-              case "mediasource":
-                const gresolver = getFacetByHost("provider", resSource.url);
-                box = new MediaSourceDirect(resSource.url, resSource.resolver, gresolver.facetId);
-                break;
+              switch (resSource.type) {
+                case "mediasource":
+                  const gresolver = getFacetByHost("provider", resSource.url);
+                  box = new MediaSourceDirect(resSource.url, resSource.resolver, gresolver.facetId);
+                  break;
 
-              case "mirror":
-                const mirror = getFacetByHost("mirror", resSource.url);
-                box = new MediaSourceMirror(resSource.url, resSource.resolver, mirror.facetId);
-                break;
+                case "mirror":
+                  const mirror = getFacetByHost("mirror", resSource.url);
+                  box = new MediaSourceMirror(resSource.url, resSource.resolver, mirror.facetId);
+                  break;
 
-              case "stream":
-                const sresolver = getFacet("streamresolver", resSource.resolver);
-                box = new MediaSourceStream(resSource.url, resSource.resolver, sresolver.facetId);
-                break;
-            }
+                case "stream":
+                  const sresolver = getFacet("streamresolver", resSource.resolver);
+                  box = new MediaSourceStream(resSource.url, resSource.resolver, sresolver.facetId);
+                  break;
+              }
 
-            box.parent = source.id;
-            return box;
-          });
+              box.parent = source.id;
+              return box;
+            });
 
-          this.sources.splice.apply(this.sources, [this.source + 1, 0].concat(<any>boxedSources));
-          source.resolved = true;
+            this.sources.splice.apply(this.sources, [this.source + 1, 0].concat(<any>boxedSources));
+            source.resolved = true;
 
-          // Reresolve
-          this.source++;
-          this.resolveSource(this.sources[this.source]);
+            // Reresolve
+            this.source++;
+            this.resolveSource(this.sources[this.source]);
+          }
         });
         break;
       case "mirror":
@@ -281,18 +287,49 @@ class Media {
     }
   }
 
+  reattemptSources() {
+    const media = this;
+    const task = media.getTask();
+
+    media.totalAttempts++;
+    console.log("ANV Stream Error for source #" + media.source + " in Media #" + media.id + " - " + media.fileName);
+
+    if (media.sourceAttempts >= state.maxSourceRetries) {
+      // Give up
+      console.log(`Skipping bad source #${ media.source } in Media #${ media.id } - ${ media.fileName }`);
+      media.sourceAttempts = 0;
+
+      media.source++;
+
+      if (media.sources[media.source]) {
+        media.resolveSource(media.sources[media.source]);
+      } else {
+        media.status = MediaStatus.FINISHED;
+        media.exhuastedSources = true;
+        console.log(`Exhausted all sources for Media #${ media.id } - ${ media.fileName }`);
+      }
+    } else {
+      // Try again
+      media.sourceAttempts++;
+      console.log(`Reattempt #${ media.sourceAttempts } for source #${ media.source } in Media #${ media.id } - ${ media.fileName }`);
+
+      media.resolveSource(media.sources[media.source]);
+    }
+  }
+
   startStream(stream: MediaSourceStream) {
-    console.log(stream);
-    // process.exit();
     const sresolver: StreamResolver = getFacetById("streamresolver", stream.facetId);
     const task = this.getTask();
     const out = new MediaStream(this);
-    this.outStream = fs.createWriteStream(task.dlDir + path.sep + this.fileName, {
-      encoding: "binary",
-    });
+
+    if (!this.outStream) {
+      this.outStream = fs.createWriteStream(task.dlDir + path.sep + this.fileName);
+    }
 
     this.lastUpdate = Date.now();
-    this.request = sresolver.resolve(stream.url, out, null, stream.options || {});
+    this.request = sresolver.resolve(stream.url, this.bytes, out, null, stream.options || {});
+
+    sresolver.lastUse = Date.now();
   }
 
   getTask() {
@@ -316,17 +353,20 @@ class MediaStream extends Writable {
     this.media.size = size;
   }
 
+  error(err: any) {
+    this.end();
+    this.media.reattemptSources();
+  }
+
   _write(chunk: Buffer, encoding: string, callback: (err?: Error) => void) {
-    this.media.buffer = Buffer.concat([chunk, this.media.buffer], chunk.length + this.media.buffer.length);
+    this.media.buffer = Buffer.concat([this.media.buffer, chunk], chunk.length + this.media.buffer.length);
     this.media.bufferedBytes += chunk.length;
 
     // FIXME: Maybe some checks here, maybe not
     callback();
   }
 
-  _finish(callback: (err?: Error) => void) {
-    this.media.request
-
+  _final(callback: (err?: Error) => void) {
     // TODO: Wrap up things with our Media
     callback();
   }
