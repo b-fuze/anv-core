@@ -5,7 +5,7 @@ export const state = {
   verbose: false,
   maxConcurrentDl: 5,
   maxGlobalConcurrentDl: 5,
-  limitOnlyGlobal: true,
+  limitOnlyGlobal: false,
   sourceTimeout: 3000,
   maxSourceRetries: 3,
   // maxBufferSize: 1000000, // bytes TODO: Check the urgency of this
