@@ -25,15 +25,14 @@ register("provider", {
     if (list) {
       return /^https?:\/\/www\.animerush\.tv\/+anime\/+[a-zA-Z\d-]+\/*$/.test(url);
     } else {
-      // http://www.animerush.tv/Ooyasan-wa-Shishunki-episode-12/mirror-317345/
       return /^https?:\/\/www\.animerush\.tv\/+[a-zA-Z\d-]+-episode(-\d+(\.\d+)?){1,2}(\/*|\/+mirror-\d+\/*)$/.test(url);
     }
   },
   tiers: [
-    ["yourupload", "Your Upload"],
     ["mp4upload-hd", "MP4Upload HD"],
     ["mp4upload", "MP4Upload"],
     ["yourupload-hd", "Your Upload HD"],
+    ["yourupload", "Your Upload"],
     ["raw", "Raw Unsubbed"],
   ],
   mediaList(jSh) {
