@@ -68,19 +68,19 @@ console.log("ANV & Client test");
 const taskUrl = "http://www.animerush.tv/anime/Isekai-wa-Smartphone-to-Tomo-ni/";
 const taskUrl2 = "http://www.animerush.tv/anime/Komori-san-wa-Kotowarenai/";
 
-instructions.load(taskUrl, (err, taskId) => {
-  if (err) {
-    console.error(err);
-  } else {
-    const task = crud.getTask(taskId);
-
-    task.on("load", load => {
-
-      // Start task
-      task.active = true;
-    });
-  }
-});
+// instructions.load(taskUrl, (err, taskId) => {
+//   if (err) {
+//     console.error(err);
+//   } else {
+//     const task = crud.getTask(taskId);
+//
+//     task.on("load", load => {
+//
+//       // Start task
+//       task.active = true;
+//     });
+//   }
+// });
 
 instructions.load(taskUrl2, (err, taskId) => {
   if (err) {

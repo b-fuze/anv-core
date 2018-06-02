@@ -222,9 +222,6 @@ class Media {
                         const curSource = this.sources[this.source];
                         const facet = facets_1.getFacetById(exports.mediaSourceFacetMap[curSource.type], curSource.facetId);
                         if (!facet.delay || (Date.now() - facet.lastUse) > facet.delay) {
-                            if (exports.mediaSourceFacetMap[curSource.type] === "mirror") {
-                                console.log("RES MEDIA #" + this.id, " delay:" + facet.delay + " lastUse:" + (Date.now() - facet.lastUse));
-                            }
                             // We can use this source now
                             this.resolveSource(curSource);
                         }

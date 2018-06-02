@@ -64,18 +64,19 @@ state_1.state.task.dlPath = "/home/b-fuse/old/tmp/anv-test";
 console.log("ANV & Client test");
 const taskUrl = "http://www.animerush.tv/anime/Isekai-wa-Smartphone-to-Tomo-ni/";
 const taskUrl2 = "http://www.animerush.tv/anime/Komori-san-wa-Kotowarenai/";
-clients_1.instructions.load(taskUrl, (err, taskId) => {
-    if (err) {
-        console.error(err);
-    }
-    else {
-        const task = tasks_1.crud.getTask(taskId);
-        task.on("load", load => {
-            // Start task
-            task.active = true;
-        });
-    }
-});
+// instructions.load(taskUrl, (err, taskId) => {
+//   if (err) {
+//     console.error(err);
+//   } else {
+//     const task = crud.getTask(taskId);
+//
+//     task.on("load", load => {
+//
+//       // Start task
+//       task.active = true;
+//     });
+//   }
+// });
 clients_1.instructions.load(taskUrl2, (err, taskId) => {
     if (err) {
         console.error(err);
