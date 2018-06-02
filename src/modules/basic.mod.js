@@ -68,10 +68,15 @@ register("streamresolver", {
       out.error(err);
     })
     .on("response", res => {
-      let size;
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        // Success
+        let size;
 
-      if (size = res.headers["content-length"]) {
-        out.setSize(+size);
+        if (size = res.headers["content-length"]) {
+          out.setSize(+size);
+        }
+      } else {
+        out.error("Status code: " + res.statusCode);
       }
     })
     .on("end", arg => {
