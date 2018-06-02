@@ -28,9 +28,13 @@ function taskActiveCount(task: Task) {
   return task.list.filter(m => (m.status === MediaStatus.ACTIVE)).length;
 }
 
+function taskFinishedCount(task: Task) {
+  return task.list.filter(m => (m.status === MediaStatus.FINISHED)).length;
+}
+
 function getTasksByFairness(tasks: Task[]) {
   return (state.taskFairness
-                  ? tasks.slice().sort((a, b) => taskActiveCount(a) - taskActiveCount(b))
+                  ? tasks.slice().sort((a, b) => (taskFinishedCount(a) - taskFinishedCount(b)) + (taskActiveCount(a) - taskActiveCount(b)))
                   : tasks.slice());
 }
 

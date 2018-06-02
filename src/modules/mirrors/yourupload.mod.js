@@ -11,11 +11,12 @@ register("mirror", {
   resolver: "cloudflare",
   streamResolver: "basic",
   hosts: [
+    "yourupload.com",
     "www.yourupload.com",
     "embed.yourupload.com",
   ],
   validUrl(url) {
-    return /^https?:\/\/www\.yourupload\.com\/+embed\/+[a-zA-Z\d]+\?&?width=\d+&height=\d+$/.test(url)
+    return /^https?:\/\/(www\.)?yourupload\.com\/+embed\/+[a-zA-Z\d]+\?&?width=\d+&height=\d+$/.test(url)
            || /^https?:\/\/embed\.yourupload\.com\/+[a-zA-Z\d]+\?&?width=\d+&height=\d+$/.test(url);
   },
   media(data, tier, url) {

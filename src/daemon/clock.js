@@ -13,9 +13,12 @@ const mediaFacetMap = {
 function taskActiveCount(task) {
     return task.list.filter(m => (m.status === tasks_1.MediaStatus.ACTIVE)).length;
 }
+function taskFinishedCount(task) {
+    return task.list.filter(m => (m.status === tasks_1.MediaStatus.FINISHED)).length;
+}
 function getTasksByFairness(tasks) {
     return (state_1.state.taskFairness
-        ? tasks.slice().sort((a, b) => taskActiveCount(a) - taskActiveCount(b))
+        ? tasks.slice().sort((a, b) => (taskFinishedCount(a) - taskFinishedCount(b)) + (taskActiveCount(a) - taskActiveCount(b)))
         : tasks.slice());
 }
 function taskPendingCount(task, delayMap) {
