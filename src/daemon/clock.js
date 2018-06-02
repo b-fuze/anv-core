@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const utils_1 = require("./utils");
 const state_1 = require("./state");
 const tasks_1 = require("./tasks");
 const tick_1 = require("./tick");
@@ -96,15 +97,15 @@ function clock() {
                         if (media.bytes === media.size) {
                             media.request = null;
                             media.setStatus(tasks_1.MediaStatus.FINISHED);
-                            media.outStream.write(media.buffer);
-                            media.buffer = Buffer.alloc(0);
+                            media.outStream.write(utils_1.bufferConcat(media.buffers));
+                            media.buffers = [];
                             media.bufferedBytes = 0;
                             media.outStream.end();
                         }
                         else {
-                            media.outStream.write(media.buffer);
+                            media.outStream.write(utils_1.bufferConcat(media.buffers));
                             media.bytes += bytes;
-                            media.buffer = Buffer.alloc(0);
+                            media.buffers = [];
                             media.bufferedBytes = 0;
                             media.lastUpdate = Date.now();
                         }

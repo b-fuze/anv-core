@@ -1,3 +1,4 @@
+import {bufferConcat} from "./utils";
 import {state, tmpState} from "./state";
 import {Task, MediaStatus, MediaSourceType} from "./tasks";
 import {startTick} from "./tick";
@@ -131,15 +132,15 @@ export function clock() {
             if (media.bytes === media.size) {
                 media.request = null;
                 media.setStatus(MediaStatus.FINISHED);
-                media.outStream.write(media.buffer);
+                media.outStream.write(bufferConcat(media.buffers));
 
-                media.buffer = Buffer.alloc(0);
+                media.buffers = [];
                 media.bufferedBytes = 0;
                 media.outStream.end();
             } else {
-              media.outStream.write(media.buffer);
+              media.outStream.write(bufferConcat(media.buffers));
               media.bytes += bytes;
-              media.buffer = Buffer.alloc(0);
+              media.buffers = [];
               media.bufferedBytes = 0;
               media.lastUpdate = Date.now();
             }

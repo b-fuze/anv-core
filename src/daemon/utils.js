@@ -68,3 +68,7 @@ function getByteSuffix(bytes) {
     return str;
 }
 exports.getByteSuffix = getByteSuffix;
+function bufferConcat(buffers) {
+    return Buffer.concat(buffers, buffers.reduce((a, b) => a + b.length, 0));
+}
+exports.bufferConcat = bufferConcat;

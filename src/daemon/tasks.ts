@@ -187,7 +187,7 @@ class Media {
   request: MediaRequest = null;
 
   outStream: Writable;
-  buffer: Buffer = Buffer.alloc(0);
+  buffers: Buffer[] = [];
   bufferedBytes: number = 0; // Cleared every tick, used to calculate download speed
   lastUpdate: number = 0;
   speed: number = 0;
@@ -422,7 +422,7 @@ class MediaStream extends Writable {
   }
 
   _write(chunk: Buffer, encoding: string, callback: (err?: Error) => void) {
-    this.media.buffer = Buffer.concat([this.media.buffer, chunk], chunk.length + this.media.buffer.length);
+    this.media.buffers.push(chunk);
     this.media.bufferedBytes += chunk.length;
 
     // FIXME: Maybe some checks here, maybe not

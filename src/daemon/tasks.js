@@ -135,7 +135,7 @@ class Media {
         this.totalAttempts = 0;
         this.exhuastedSources = false;
         this.request = null;
-        this.buffer = Buffer.alloc(0);
+        this.buffers = [];
         this.bufferedBytes = 0; // Cleared every tick, used to calculate download speed
         this.lastUpdate = 0;
         this.speed = 0;
@@ -321,7 +321,7 @@ class MediaStream extends stream_1.Writable {
         this.media.reattemptSources();
     }
     _write(chunk, encoding, callback) {
-        this.media.buffer = Buffer.concat([this.media.buffer, chunk], chunk.length + this.media.buffer.length);
+        this.media.buffers.push(chunk);
         this.media.bufferedBytes += chunk.length;
         // FIXME: Maybe some checks here, maybe not
         callback();

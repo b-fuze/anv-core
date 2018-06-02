@@ -83,3 +83,7 @@ export function getByteSuffix(bytes: number): string {
 
   return str;
 }
+
+export function bufferConcat(buffers: Buffer[]) {
+  return Buffer.concat(buffers, buffers.reduce((a, b) => a + b.length, 0));
+}
