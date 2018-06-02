@@ -106,6 +106,7 @@ function clock() {
                             media.bytes += bytes;
                             media.buffer = Buffer.alloc(0);
                             media.bufferedBytes = 0;
+                            media.lastUpdate = Date.now();
                         }
                     }
                 }

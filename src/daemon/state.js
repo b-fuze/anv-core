@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("./utils");
 exports.state = {
     verbose: false,
-    maxConcurrentDl: 5,
+    maxConcurrentDl: 3,
     maxGlobalConcurrentDl: 5,
     limitOnlyGlobal: false,
     sourceTimeout: 3000,

@@ -21,7 +21,6 @@ export function resolveProvider(url: string, done: (err: string, metadata: Provi
       gresolver.resolve(url, (err, resource) => {
         if (!err) {
           done(null, provider.mediaList(resource));
-
         } else {
           done(err, null);
         }
@@ -81,16 +80,14 @@ export function resolveMirror(url: string, done: (err: string, url: any) => void
 
   const mirror = getFacetByHost("mirror", url);
 
-  // FIXME: Put some erroring mechanism here
   if (mirror) {
     const gresolver = getFacet("genericresolver", mirror.resolver);
 
     if (gresolver) {
       gresolver.resolve(url, (err, data) => {
         if (!err) {
-          const streamUrl = mirror.media(data, tier);
+          const streamUrl = mirror.media(data, tier, url);
           done(null, streamUrl);
-
         } else {
           done(err, null);
         }

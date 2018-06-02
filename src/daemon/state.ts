@@ -1,9 +1,9 @@
 import {deepCopy} from "./utils";
-import {FacetTiers} from "./facets";
+import {FacetTiers} from "./utils";
 
 export const state = {
   verbose: false,
-  maxConcurrentDl: 5,
+  maxConcurrentDl: 3,
   maxGlobalConcurrentDl: 5,
   limitOnlyGlobal: false,
   sourceTimeout: 3000,

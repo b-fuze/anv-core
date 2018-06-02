@@ -30,10 +30,10 @@ register("provider", {
     }
   },
   tiers: [
+    ["yourupload", "Your Upload"],
     ["mp4upload-hd", "MP4Upload HD"],
     ["mp4upload", "MP4Upload"],
     ["yourupload-hd", "Your Upload HD"],
-    ["yourupload", "Your Upload"],
     ["raw", "Raw Unsubbed"],
   ],
   mediaList(jSh) {

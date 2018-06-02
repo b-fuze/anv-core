@@ -122,11 +122,11 @@ export function clock() {
       if (intervals[state.tickDelay]) {
         for (const media of task.list) {
           if (media.status === MediaStatus.ACTIVE && media.outStream && media.request) {
-              const now = Date.now();
-              const dur = now - media.lastUpdate;
-              const bytes = media.bufferedBytes;
+            const now = Date.now();
+            const dur = now - media.lastUpdate;
+            const bytes = media.bufferedBytes;
 
-              media.speed = Math.floor((1000 / dur) * bytes);
+            media.speed = Math.floor((1000 / dur) * bytes);
 
             if (media.bytes === media.size) {
                 media.request = null;
@@ -141,6 +141,7 @@ export function clock() {
               media.bytes += bytes;
               media.buffer = Buffer.alloc(0);
               media.bufferedBytes = 0;
+              media.lastUpdate = Date.now();
             }
           }
         }

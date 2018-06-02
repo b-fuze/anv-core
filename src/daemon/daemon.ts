@@ -65,7 +65,7 @@ if (args.ws) {
 state.task.dlPath = "/home/b-fuse/old/tmp/anv-test";
 
 console.log("ANV & Client test");
-const taskUrl = "http://www.animerush.tv/anime/Ooyasan-wa-Shishunki/";
+const taskUrl = "http://www.animerush.tv/anime/Isekai-wa-Smartphone-to-Tomo-ni/";
 const taskUrl2 = "http://www.animerush.tv/anime/Komori-san-wa-Kotowarenai/";
 
 instructions.load(taskUrl, (err, taskId) => {

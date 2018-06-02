@@ -15,6 +15,7 @@ import {
   facetStore,
   FacetStore,
 } from "./facets";
+import {rankItems} from "./tiers";
 import {resolveProviderSource, resolveMirror} from "./resolve";
 import {state, tmpState} from "./state";
 import {deepCopy} from "./utils";
@@ -62,7 +63,13 @@ export const crud = class {
     });
   }
 
-  static deleteTaskMedia(id: number, media: number[]) {
+  static deleteTaskMediaFile(id: number, media: number[]) {
+    return this.hasTaskThen(id, task => {
+
+    });
+  }
+
+  static resetTaskMedia(id: number, media: number[]) {
     return this.hasTaskThen(id, task => {
 
     });
@@ -249,6 +256,8 @@ class Media {
   }
 
   resolveSource(source: MediaSource) {
+    const task = this.getTask();
+
     switch (source.type) {
       case "direct":
         resolveProviderSource(source.url, this.sources.length !== 1, (err, sources) => {
@@ -256,7 +265,7 @@ class Media {
             console.log("ANV Provider Error: ", err);
             this.reattemptSources();
           } else {
-            const boxedSources = sources.map(resSource => {
+            const boxedSources = rankItems("provider", source.facet, sources, task.settings.tiers).map(resSource => {
               let box: MediaSource;
 
               switch (resSource.type) {
@@ -271,8 +280,9 @@ class Media {
                   break;
 
                 case "stream":
-                  const sresolver = getFacet("streamresolver", resSource.resolver);
-                  box = new MediaSourceStream(resSource.url, resSource.resolver, sresolver.facetId);
+                  // FIXME: Default stream resolver is probably a bug
+                  const sresolver = getFacet("streamresolver", resSource.resolver || "basic");
+                  box = new MediaSourceStream(resSource.url, sresolver.name, sresolver.facetId);
                   break;
               }
 
@@ -304,14 +314,20 @@ class Media {
         break;
       case "mirror":
         resolveMirror(source.url, (err, data) => {
+          if (!data) {
+            // Mirror says the this is a bad source
+            this.setStatus(MediaStatus.PENDING);
+            return this.reattemptSources(true);
+          }
+
           const mirror = getFacetById("mirror", source.facetId);
-          const sresolver = getFacet("streamresolver", mirror.resolver);
+          const sresolver = getFacet("streamresolver", mirror.streamResolver);
 
           const mirrorResult: MirrorResult = type(data) === "object" ? data : {
             url: data,
           };
 
-          const stream = new MediaSourceStream(mirrorResult.url, mirror.resolver, sresolver.facetId);
+          const stream = new MediaSourceStream(mirrorResult.url, mirror.streamResolver, sresolver.facetId);
           stream.parent = source.id;
 
           if (type(mirrorResult.options) === "object")
@@ -332,14 +348,14 @@ class Media {
   }
 
   // FIXME: Tidy this up
-  reattemptSources() {
+  reattemptSources(skip = false) {
     const media = this;
     const task = media.getTask();
 
     media.totalAttempts++;
     console.log("ANV Stream Error for source #" + media.source + " in Media #" + media.id + " - " + media.fileName);
 
-    if (media.sourceAttempts >= state.maxSourceRetries) {
+    if (skip || media.sourceAttempts >= state.maxSourceRetries) {
       // Give up
       console.log(`Skipping bad source #${ media.source } (${ media.sources[media.source].url }) in Media #${ media.id } - ${ media.fileName }`);
       media.sourceAttempts = 0;

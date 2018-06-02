@@ -66,13 +66,12 @@ function resolveMirror(url, done, tier = null) {
         done("Invalid url", null);
     }
     const mirror = facets_1.getFacetByHost("mirror", url);
-    // FIXME: Put some erroring mechanism here
     if (mirror) {
         const gresolver = facets_1.getFacet("genericresolver", mirror.resolver);
         if (gresolver) {
             gresolver.resolve(url, (err, data) => {
                 if (!err) {
-                    const streamUrl = mirror.media(data, tier);
+                    const streamUrl = mirror.media(data, tier, url);
                     done(null, streamUrl);
                 }
                 else {

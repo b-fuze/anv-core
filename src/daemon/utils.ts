@@ -1,5 +1,16 @@
 import {jSh} from "jshorts";
 
+// Bad place to put this, but will have to do for now FIXME
+export interface FacetTiers {
+  mirror: {
+    [facetId: string]: string[];
+  }
+
+  provider: {
+    [facetId: string]: string[];
+  }
+}
+
 type JSType = "string" | "number" | "boolean" | "undefined" | "null" | "array" | "object" | "function";
 export function type(value: any): JSType {
   const base = typeof value;

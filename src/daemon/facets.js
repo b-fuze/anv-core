@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const url_1 = require("url");
+const state_1 = require("./state");
 var Facet;
 (function (Facet) {
     Facet["Provider"] = "provider";
@@ -26,6 +27,7 @@ exports.facetStateIdMap = {
     genericresolver: {},
     streamresolver: {},
 };
+// Facet tiers
 exports.facetTiers = {
     mirror: {},
     provider: {},
@@ -48,7 +50,11 @@ function registerFacet(facet, facetId, facetData) {
     };
     // Load tiers
     if (facet === "mirror" || facet === "provider") {
-        exports.facetTiers[facet][facetId] = Object.keys(facetData.tiers);
+        const curFacetTiers = facetData.tiers;
+        // FIXME: Fix these types
+        exports.facetTiers[facet][facetId] = curFacetTiers;
+        state_1.state.task.tiers[facet][facetData.name] = curFacetTiers;
+        state_1.defaultState.task.tiers[facet][facetData.name] = curFacetTiers;
         for (const host of facetData.hosts) {
             exports.facetHostMap[facet][host] = facetData.name;
         }

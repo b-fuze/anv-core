@@ -13,6 +13,7 @@ const stream_1 = require("stream");
 const utils_1 = require("./utils");
 const lces_1 = require("lces");
 const facets_1 = require("./facets");
+const tiers_1 = require("./tiers");
 const resolve_1 = require("./resolve");
 const state_1 = require("./state");
 const utils_2 = require("./utils");
@@ -51,7 +52,11 @@ exports.crud = class {
             task.active = false;
         });
     }
-    static deleteTaskMedia(id, media) {
+    static deleteTaskMediaFile(id, media) {
+        return this.hasTaskThen(id, task => {
+        });
+    }
+    static resetTaskMedia(id, media) {
         return this.hasTaskThen(id, task => {
         });
     }
@@ -181,6 +186,7 @@ class Media {
         this.setStatus(MediaStatus.PAUSED);
     }
     resolveSource(source) {
+        const task = this.getTask();
         switch (source.type) {
             case "direct":
                 resolve_1.resolveProviderSource(source.url, this.sources.length !== 1, (err, sources) => {
@@ -189,7 +195,7 @@ class Media {
                         this.reattemptSources();
                     }
                     else {
-                        const boxedSources = sources.map(resSource => {
+                        const boxedSources = tiers_1.rankItems("provider", source.facet, sources, task.settings.tiers).map(resSource => {
                             let box;
                             switch (resSource.type) {
                                 case "mediasource":
@@ -201,8 +207,9 @@ class Media {
                                     box = new MediaSourceMirror(resSource.url, mirror.name, mirror.facetId);
                                     break;
                                 case "stream":
-                                    const sresolver = facets_1.getFacet("streamresolver", resSource.resolver);
-                                    box = new MediaSourceStream(resSource.url, resSource.resolver, sresolver.facetId);
+                                    // FIXME: Default stream resolver is probably a bug
+                                    const sresolver = facets_1.getFacet("streamresolver", resSource.resolver || "basic");
+                                    box = new MediaSourceStream(resSource.url, sresolver.name, sresolver.facetId);
                                     break;
                             }
                             box.parent = source.id;
@@ -230,12 +237,17 @@ class Media {
                 break;
             case "mirror":
                 resolve_1.resolveMirror(source.url, (err, data) => {
+                    if (!data) {
+                        // Mirror says the this is a bad source
+                        this.setStatus(MediaStatus.PENDING);
+                        return this.reattemptSources(true);
+                    }
                     const mirror = facets_1.getFacetById("mirror", source.facetId);
-                    const sresolver = facets_1.getFacet("streamresolver", mirror.resolver);
+                    const sresolver = facets_1.getFacet("streamresolver", mirror.streamResolver);
                     const mirrorResult = utils_1.type(data) === "object" ? data : {
                         url: data,
                     };
-                    const stream = new MediaSourceStream(mirrorResult.url, mirror.resolver, sresolver.facetId);
+                    const stream = new MediaSourceStream(mirrorResult.url, mirror.streamResolver, sresolver.facetId);
                     stream.parent = source.id;
                     if (utils_1.type(mirrorResult.options) === "object")
                         stream.options = mirrorResult.options;
@@ -252,12 +264,12 @@ class Media {
         }
     }
     // FIXME: Tidy this up
-    reattemptSources() {
+    reattemptSources(skip = false) {
         const media = this;
         const task = media.getTask();
         media.totalAttempts++;
         console.log("ANV Stream Error for source #" + media.source + " in Media #" + media.id + " - " + media.fileName);
-        if (media.sourceAttempts >= state_1.state.maxSourceRetries) {
+        if (skip || media.sourceAttempts >= state_1.state.maxSourceRetries) {
             // Give up
             console.log(`Skipping bad source #${media.source} (${media.sources[media.source].url}) in Media #${media.id} - ${media.fileName}`);
             media.sourceAttempts = 0;

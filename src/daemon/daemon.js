@@ -62,7 +62,7 @@ if (args.ws) {
 // Create fake client request
 state_1.state.task.dlPath = "/home/b-fuse/old/tmp/anv-test";
 console.log("ANV & Client test");
-const taskUrl = "http://www.animerush.tv/anime/Ooyasan-wa-Shishunki/";
+const taskUrl = "http://www.animerush.tv/anime/Isekai-wa-Smartphone-to-Tomo-ni/";
 const taskUrl2 = "http://www.animerush.tv/anime/Komori-san-wa-Kotowarenai/";
 clients_1.instructions.load(taskUrl, (err, taskId) => {
     if (err) {

@@ -170,9 +170,10 @@ export class sanitize {
       cache: [false, "boolean", false],
       delay: [false, ["number", "function:2"], 500],
       resolver: [false, "string", "basic"],
+      streamResolver: [false, "string", "basic"],
       hosts: [true, "array:string"],
       validUrl: [true, "function:1"],
-      tiers: [false, {}, {}],
+      tiers: [false, "array", []],
       media: [true, "function:3"],
     });
 

@@ -21,6 +21,7 @@ register("mirror", {
   cache: false,
   delay: 350,
   resolver: "basic",
+  streamResolver: "basic",
   hosts: [
     "mp4upload.com",
   ],

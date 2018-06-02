@@ -1,4 +1,9 @@
 import {parse} from "url";
+import {FacetTiers} from "./utils";
+import {state, defaultState} from "./state";
+
+export {FacetTiers} from "./utils";
+
 import {
   ProviderFacet as Provider,
   MirrorFacet as Mirror,
@@ -96,16 +101,6 @@ interface FacetMap {
 
 // Facet tiers
 
-export interface FacetTiers {
-  mirror: {
-    [facetId: string]: string[];
-  }
-
-  provider: {
-    [facetId: string]: string[];
-  }
-}
-
 export const facetTiers = {
   mirror: {},
   provider: {},
@@ -145,7 +140,12 @@ export function registerFacet<K extends keyof FacetMap>(facet: K, facetId: strin
 
   // Load tiers
   if (facet === "mirror" || facet === "provider") {
-    (<any>facetTiers)[facet][facetId] = Object.keys((<any>facetData).tiers);
+    const curFacetTiers = (<any>facetData).tiers;
+
+    // FIXME: Fix these types
+    (<any>facetTiers)[facet][facetId] = curFacetTiers;
+    (<any>state.task.tiers)[facet][facetData.name] = curFacetTiers;
+    (<any>defaultState.task.tiers)[facet][facetData.name] = curFacetTiers;
 
     for (const host of (<any>facetData).hosts as string[]) {
       (<any>facetHostMap)[facet][host] = facetData.name;
