@@ -220,6 +220,10 @@ class Media {
                         // Reresolve
                         this.source++;
                         const curSource = this.sources[this.source];
+                        if (!curSource) {
+                            console.log("No sources for Media #" + this.id + " - " + this.fileName);
+                            return this.setStatus(MediaStatus.FINISHED);
+                        }
                         const facet = facets_1.getFacetById(exports.mediaSourceFacetMap[curSource.type], curSource.facetId);
                         if (!facet.delay || (Date.now() - facet.lastUse) > facet.delay) {
                             // We can use this source now

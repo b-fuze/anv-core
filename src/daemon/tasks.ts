@@ -297,6 +297,12 @@ class Media {
             this.source++;
 
             const curSource = this.sources[this.source];
+
+            if (!curSource) {
+              console.log("No sources for Media #" + this.id + " - " + this.fileName);
+              return this.setStatus(MediaStatus.FINISHED);
+            }
+
             const facet = getFacetById(<keyof FacetStore> mediaSourceFacetMap[curSource.type], curSource.facetId);
 
             if (!(<any> facet).delay || (Date.now() - facet.lastUse) > (<any> facet).delay) {
