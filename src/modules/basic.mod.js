@@ -9,8 +9,6 @@ register("genericresolver", {
   description: "Basic ANV generic request resolver",
   weight: 0,
   resolve(url, done) {
-    console.log("RESOLVE: " + url);
-
     request(url, (err, res, body) => {
       if (!err) {
         done(null, body);
@@ -43,7 +41,6 @@ register("genericresolver", {
   description: "Basic ANV url",
   weight: 0,
   resolve(url, done) {
-
     setTimeout(() => {
       done(null, url);
     }, 0);
