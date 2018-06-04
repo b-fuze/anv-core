@@ -5,10 +5,16 @@ const state_1 = require("./state");
 const tasks_1 = require("./tasks");
 const tick_1 = require("./tick");
 const facets_1 = require("./facets");
+const queue_1 = require("./queue");
 const mediaFacetMap = {
     [tasks_1.MediaSourceType.Direct]: "provider",
     [tasks_1.MediaSourceType.Mirror]: "mirror",
     [tasks_1.MediaSourceType.Stream]: "streamresolver",
+};
+// FIXME: Unnecessary term clash made this a requirement
+const sourceQueueMap = {
+    direct: "provider",
+    mirror: "mirror",
 };
 function taskActiveCount(task) {
     return task.list.filter(m => (m.status === tasks_1.MediaStatus.ACTIVE)).length;
@@ -25,43 +31,46 @@ function taskPendingCount(task, delayMap) {
     return task.list.filter(m => {
         const eligible = m.selected && m.status !== tasks_1.MediaStatus.FINISHED && m.status !== tasks_1.MediaStatus.ACTIVE;
         if (eligible) {
-            let oldValue = null;
-            if (delayMap.media.hasOwnProperty(m.id)) {
-                oldValue = delayMap.media[m.id].delay;
+            if (m.queueId === null) {
+                // This media hasn't even been queued yet
+                return true;
             }
-            const source = m.sources[m.source];
-            const facetType = mediaFacetMap[source.type];
-            const facet = facets_1.getFacet(facetType, source.facet);
-            const facetIdPrefix = facetType + ":" + facet.facetId;
-            const lastUse = facetIdPrefix in delayMap.facet ? delayMap.facet[facetIdPrefix] : facet.lastUse;
-            if (!(facetIdPrefix in delayMap.facet)) {
-                delayMap.facet[facetIdPrefix] = Date.now();
+            else {
+                let source = m.getSource();
+                let mirrorStream = false;
+                if (source.type === "stream" && source.parentType === "mirror") {
+                    source = tasks_1.mediaSources[source.parent];
+                    mirrorStream = true;
+                }
+                return queue_1.queueState((mirrorStream ? "mirrorstream" : sourceQueueMap[source.type]), source.facetId, m.queueId) === queue_1.QueueState.READY;
             }
-            delayMap.media[m.id] = {
-                delay: oldValue !== null && !oldValue ? oldValue : (Date.now() - lastUse) > facet.delay,
-                facet,
-            };
-            return delayMap.media[m.id].delay;
         }
     }).length;
 }
 function clock() {
     const clock = tick_1.startTick([50, state_1.state.tickDelay, 2000], (tasks, intervals) => {
-        const delayMap = {
-            media: {},
-            facet: {},
-        };
         let exhaustedTasks = false;
         function addMoreMedia(tasks, limit) {
             taskLoop: for (const task of tasks) {
-                taskPendingCount(task, delayMap);
                 if (task.active) {
                     mediaLoop: for (const media of task.list) {
                         if (media.selected) {
+                            let mediaSource = media.getSource();
+                            let mirrorStream = false;
+                            if (mediaSource.type === "stream" && mediaSource.parentType === "mirror") {
+                                mediaSource = tasks_1.mediaSources[mediaSource.parent];
+                                mirrorStream = true;
+                            }
+                            const queueFacet = (mirrorStream ? "mirrorstream" : sourceQueueMap[mediaSource.type]);
                             if (media.status !== tasks_1.MediaStatus.FINISHED
                                 && media.status !== tasks_1.MediaStatus.ACTIVE
-                                && delayMap.media[media.id].delay) {
+                                && (media.queueId === null
+                                    || mediaSource.type === "stream"
+                                    || queue_1.queueState(queueFacet, mediaSource.facetId, media.queueId) === queue_1.QueueState.READY)) {
                                 media.start();
+                                if (media.queueId !== null) {
+                                    queue_1.advanceQueue(queueFacet, mediaSource.facetId);
+                                }
                                 limit--;
                                 break mediaLoop;
                             }
@@ -73,7 +82,7 @@ function clock() {
                             continue taskLoop;
                         }
                     }
-                    if (task.currentDl < taskPendingCount(task, delayMap)) {
+                    if (task.currentDl < taskPendingCount(task)) {
                         exhaustedTasks = false;
                     }
                 }
@@ -85,7 +94,7 @@ function clock() {
         }
         for (const task of getTasksByFairness(tasks)) {
             if (!exhaustedTasks && !state_1.state.maxGlobalConcurrentDl && !state_1.state.limitOnlyGlobal) {
-                while (!exhaustedTasks && task.currentDl < state_1.state.maxConcurrentDl && taskPendingCount(task, delayMap)) {
+                while (!exhaustedTasks && task.currentDl < state_1.state.maxConcurrentDl && taskPendingCount(task)) {
                     exhaustedTasks = true;
                     addMoreMedia([task], 1);
                 }
@@ -104,6 +113,14 @@ function clock() {
                             media.buffers = [];
                             media.bufferedBytes = 0;
                             media.outStream.end();
+                            // FIXME: Tidy this up
+                            const stream = media.getSource();
+                            if (stream.parentType === tasks_1.MediaSourceType.Mirror) {
+                                const mirror = tasks_1.mediaSources[stream.parent];
+                                const facet = facets_1.getFacetById("mirror", mirror.facetId);
+                                // Mark mirror facet as done
+                                facet.connectionCount--;
+                            }
                         }
                         else {
                             media.outStream.write(utils_1.bufferConcat(media.buffers));
@@ -116,6 +133,10 @@ function clock() {
                 }
             }
         }
+        // Process queue
+        queue_1.processQueue(mediaIds => {
+            // FIXME: Do something here
+        });
     });
     clock.start();
     return clock;

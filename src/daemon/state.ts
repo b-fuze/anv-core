@@ -6,8 +6,10 @@ export const state = {
   maxConcurrentDl: 3,
   maxGlobalConcurrentDl: 5,
   limitOnlyGlobal: false,
+  ignoreMaxConnections: false,
   sourceTimeout: 3000,
   maxSourceRetries: 3,
+  skipOccupiedMirrors: false,
   // maxBufferSize: 1000000, // bytes TODO: Check the urgency of this
   scanDlDirOnStart: false,
   useGlobalPersistentStateStore: false,

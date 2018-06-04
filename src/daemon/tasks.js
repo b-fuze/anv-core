@@ -16,8 +16,9 @@ const facets_1 = require("./facets");
 const tiers_1 = require("./tiers");
 const resolve_1 = require("./resolve");
 const state_1 = require("./state");
+const queue_1 = require("./queue");
 const utils_2 = require("./utils");
-const tasks = [];
+const tasks = [null];
 exports.crud = class {
     static getTask(id) {
         return tasks[id] || null;
@@ -107,7 +108,7 @@ class Task extends lces_1.Component {
     }
 }
 exports.Task = Task;
-exports.media = [];
+exports.media = [null];
 var MediaStatus;
 (function (MediaStatus) {
     MediaStatus["IDLE"] = "IDLE";
@@ -139,6 +140,7 @@ class Media {
         this.bufferedBytes = 0; // Cleared every tick, used to calculate download speed
         this.lastUpdate = 0;
         this.speed = 0;
+        this.queueId = null;
         this.id = exports.media.length;
         this.listId = taskMediaList.length;
         exports.media.push(this);
@@ -185,6 +187,12 @@ class Media {
         }
         this.setStatus(MediaStatus.PAUSED);
     }
+    nextSource() {
+        return ++this.source;
+    }
+    getSource() {
+        return this.sources[this.source];
+    }
     resolveSource(source) {
         const task = this.getTask();
         switch (source.type) {
@@ -213,26 +221,29 @@ class Media {
                                     break;
                             }
                             box.parent = source.id;
+                            box.parentType = source.type;
                             return box;
                         });
                         this.sources.splice.apply(this.sources, [this.source + 1, 0].concat(boxedSources));
                         source.resolved = true;
                         // Reresolve
-                        this.source++;
+                        this.nextSource();
                         const curSource = this.sources[this.source];
                         if (!curSource) {
                             console.log("No sources for Media #" + this.id + " - " + this.fileName);
                             return this.setStatus(MediaStatus.FINISHED);
                         }
-                        const facet = facets_1.getFacetById(exports.mediaSourceFacetMap[curSource.type], curSource.facetId);
-                        if (!facet.delay || (Date.now() - facet.lastUse) > facet.delay) {
-                            // We can use this source now
-                            this.resolveSource(curSource);
-                        }
-                        else {
-                            // We have to wait a while for this source
-                            this.setStatus(MediaStatus.PENDING);
-                        }
+                        const facetType = exports.mediaSourceFacetMap[curSource.type];
+                        const facet = facets_1.getFacetById(facetType, curSource.facetId);
+                        const facetQueueMap = {
+                            direct: "provider",
+                            mirror: "mirror",
+                            // FIXME: No providerstream atm
+                            stream: "providerstream",
+                        };
+                        // Add to queue
+                        this.queueId = queue_1.queueAdd(facetQueueMap[curSource.type], facet.facetId, null, this.id);
+                        this.setStatus(MediaStatus.PENDING);
                     }
                 });
                 break;
@@ -250,13 +261,16 @@ class Media {
                     };
                     const stream = new MediaSourceStream(mirrorResult.url, mirror.streamResolver, sresolver.facetId);
                     stream.parent = source.id;
+                    stream.parentType = MediaSourceType.Mirror;
                     if (utils_1.type(mirrorResult.options) === "object")
                         stream.options = mirrorResult.options;
                     this.sources.splice(this.source + 1, 0, stream);
                     source.resolved = true;
                     // Reresolve
-                    this.source++;
-                    this.resolveSource(this.sources[this.source]);
+                    this.nextSource();
+                    this.queueId = queue_1.queueAdd("mirrorstream", mirror.facetId, null, this.id);
+                    this.setStatus(MediaStatus.PENDING);
+                    // this.resolveSource(this.getSource());
                 });
                 break;
             case "stream":
@@ -274,9 +288,9 @@ class Media {
             // Give up
             console.log(`Skipping bad source #${media.source} (${media.sources[media.source].url}) in Media #${media.id} - ${media.fileName}`);
             media.sourceAttempts = 0;
-            media.source++;
+            this.nextSource();
             if (media.sources[media.source]) {
-                media.resolveSource(media.sources[media.source]);
+                media.resolveSource(this.getSource());
             }
             else {
                 media.setStatus(MediaStatus.FINISHED);
@@ -292,6 +306,32 @@ class Media {
         }
     }
     startStream(stream) {
+        let parentSource;
+        if (!state_1.state.ignoreMaxConnections && stream.parentType === MediaSourceType.Mirror) {
+            const parent = exports.mediaSources[stream.parent];
+            const facet = parentSource = facets_1.getFacetById("mirror", parent.facetId);
+            // Are there too many connections being used now?
+            if (facet.maxConnections && facet.connectionCount === facet.maxConnections) {
+                // Can we skip and are there are any more sources to use? FIXME: Check the following sources aren't also the same mirror
+                if (state_1.state.skipOccupiedMirrors && this.source + 1 < this.sources.length) {
+                    this.nextSource();
+                    const source = this.getSource();
+                    const facet = facets_1.getFacetById(exports.mediaSourceFacetMap[source.type], source.facetId);
+                    const streamFacetQueueMap = {
+                        // FIXME: No such thing as "providerstream"
+                        provider: "providerstream",
+                        mirror: "mirrorstream",
+                    };
+                    // Add to queue
+                    this.queueId = queue_1.queueAdd(streamFacetQueueMap[source.type], facet.facetId, null, this.id);
+                    return this.setStatus(MediaStatus.PENDING);
+                }
+                else {
+                    // Just wait
+                    return this.setStatus(MediaStatus.PENDING);
+                }
+            }
+        }
         const sresolver = facets_1.getFacetById("streamresolver", stream.facetId);
         const task = this.getTask();
         const out = new MediaStream(this);
@@ -301,6 +341,9 @@ class Media {
         this.lastUpdate = Date.now();
         this.request = sresolver.resolve(stream.url, this.bytes, out, null, stream.options || {});
         sresolver.lastUse = Date.now();
+        if (parentSource) {
+            parentSource.connectionCount++;
+        }
     }
     getTask() {
         return exports.crud.getTask(this.taskId);
@@ -332,7 +375,7 @@ class MediaStream extends stream_1.Writable {
     }
 }
 exports.MediaStream = MediaStream;
-const mediaSources = [];
+exports.mediaSources = [null];
 var MediaSourceType;
 (function (MediaSourceType) {
     MediaSourceType["Direct"] = "direct";
@@ -342,10 +385,11 @@ var MediaSourceType;
 ;
 class MediaSource {
     constructor() {
+        this.parent = null;
         this.resolved = false;
         this.options = {};
-        this.id = mediaSources.length;
-        mediaSources.push(this);
+        this.id = exports.mediaSources.length;
+        exports.mediaSources.push(this);
     }
 }
 exports.MediaSource = MediaSource;
@@ -356,6 +400,7 @@ class MediaSourceStream extends MediaSource {
         this.facet = facet;
         this.facetId = facetId;
         this.type = MediaSourceType.Stream;
+        this.facetType = "streamresolver";
     }
 }
 exports.MediaSourceStream = MediaSourceStream;
@@ -368,6 +413,7 @@ class MediaSourceMirror extends MediaSource {
         this.facetId = facetId;
         this.sourceStream = sourceStream;
         this.type = MediaSourceType.Mirror;
+        this.facetType = "mirror";
     }
 }
 exports.MediaSourceMirror = MediaSourceMirror;
@@ -378,6 +424,7 @@ class MediaSourceDirect extends MediaSource {
         this.facet = facet;
         this.facetId = facetId;
         this.type = MediaSourceType.Direct;
+        this.facetType = "provider";
     }
 }
 exports.MediaSourceDirect = MediaSourceDirect;

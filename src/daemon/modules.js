@@ -33,6 +33,9 @@ anv_1.setInstance(class {
                 else {
                     // Add lastUse
                     data.lastUse = 0;
+                    if (facet === "mirror") {
+                        data.connectionCount = 0;
+                    }
                     facets_1.registerFacet(facet, facetId, data);
                     console.log("Registered " + facet + " " + facetId);
                 }

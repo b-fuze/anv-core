@@ -60,23 +60,25 @@ if (args.ws) {
     listenWS();
 }
 // Create fake client request
-state_1.state.task.dlPath = "/home/b-fuse/old/tmp/anv-test";
+state_1.state.task.dlPath = "/home/b-fuse/old/tmp/anv-test/test";
+state_1.state.maxGlobalConcurrentDl = 5;
+state_1.state.limitOnlyGlobal = true;
 console.log("ANV & Client test");
-const taskUrl = "http://www.animerush.tv/anime/Isekai-wa-Smartphone-to-Tomo-ni/";
-const taskUrl2 = "http://www.animerush.tv/anime/Komori-san-wa-Kotowarenai/";
-// instructions.load(taskUrl, (err, taskId) => {
-//   if (err) {
-//     console.error(err);
-//   } else {
-//     const task = crud.getTask(taskId);
-//
-//     task.on("load", load => {
-//
-//       // Start task
-//       task.active = true;
-//     });
-//   }
-// });
+const taskUrl = "http://www.animerush.tv/anime/shakugan-no-shana/";
+const taskUrl2 = "http://www.animerush.tv/anime/shakugan-no-shana-ii/";
+const taskUrl3 = "http://www.animerush.tv/anime/shakugan-no-shana-iii/";
+clients_1.instructions.load(taskUrl, (err, taskId) => {
+    if (err) {
+        console.error(err);
+    }
+    else {
+        const task = tasks_1.crud.getTask(taskId);
+        task.on("load", load => {
+            // Start task
+            task.active = true;
+        });
+    }
+});
 clients_1.instructions.load(taskUrl2, (err, taskId) => {
     if (err) {
         console.error(err);
@@ -89,6 +91,31 @@ clients_1.instructions.load(taskUrl2, (err, taskId) => {
         });
     }
 });
+clients_1.instructions.load(taskUrl3, (err, taskId) => {
+    if (err) {
+        console.error(err);
+    }
+    else {
+        const task = tasks_1.crud.getTask(taskId);
+        task.on("load", load => {
+            // Start task
+            task.active = true;
+        });
+    }
+});
+// instructions.load(taskUrl4, (err, taskId) => {
+//   if (err) {
+//     console.error(err);
+//   } else {
+//     const task = crud.getTask(taskId);
+//
+//     task.on("load", load => {
+//
+//       // Start task
+//       task.active = true;
+//     });
+//   }
+// });
 mainClock.event.on("tick", intervals => {
     if (intervals[1000]) {
         let printed = false;

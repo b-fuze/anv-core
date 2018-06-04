@@ -1,8 +1,9 @@
 import {bufferConcat} from "./utils";
 import {state, tmpState} from "./state";
-import {Task, MediaStatus, MediaSourceType} from "./tasks";
+import {Task, mediaSources, MediaStatus, MediaSourceType} from "./tasks";
 import {startTick} from "./tick";
-import {getFacet} from "./facets";
+import {getFacet, getFacetById} from "./facets";
+import {advanceQueue, processQueue, queueState, QueueState} from "./queue";
 
 interface DelayMap {
   facet: {
@@ -24,6 +25,12 @@ const mediaFacetMap = {
   [MediaSourceType.Stream]: "streamresolver",
 }
 
+// FIXME: Unnecessary term clash made this a requirement
+const sourceQueueMap = {
+  direct: "provider",
+  mirror: "mirror",
+};
+
 function taskActiveCount(task: Task) {
   return task.list.filter(m => (m.status === MediaStatus.ACTIVE)).length;
 }
@@ -38,59 +45,60 @@ function getTasksByFairness(tasks: Task[]) {
                   : tasks.slice());
 }
 
-function taskPendingCount(task: Task, delayMap: DelayMap): number {
+function taskPendingCount(task: Task, delayMap?: DelayMap): number {
   return task.list.filter(m => {
     const eligible = m.selected && m.status !== MediaStatus.FINISHED && m.status !== MediaStatus.ACTIVE;
 
     if (eligible) {
-      let oldValue = null;
+      if (m.queueId === null) {
+        // This media hasn't even been queued yet
+        return true;
+      } else {
+        let source = m.getSource();
+        let mirrorStream = false;
 
-      if (delayMap.media.hasOwnProperty(m.id)) {
-        oldValue = delayMap.media[m.id].delay;
+        if (source.type === "stream" && source.parentType === "mirror") {
+          source = mediaSources[source.parent];
+          mirrorStream = true;
+        }
+
+        return queueState(<any> (mirrorStream ? "mirrorstream" : (<any> sourceQueueMap)[source.type]), source.facetId, m.queueId) === QueueState.READY;
       }
-
-      const source = m.sources[m.source];
-      const facetType = mediaFacetMap[source.type];
-      const facet = getFacet(<"provider" | "mirror" | "streamresolver"> facetType, source.facet);
-      const facetIdPrefix = facetType + ":" + facet.facetId;
-
-      const lastUse = facetIdPrefix in delayMap.facet ? delayMap.facet[facetIdPrefix] : facet.lastUse;
-
-      if (!(facetIdPrefix in delayMap.facet)) {
-        delayMap.facet[facetIdPrefix] = Date.now();
-      }
-
-      delayMap.media[m.id] = {
-        delay: oldValue !== null && !oldValue ? oldValue : (Date.now() - lastUse) > (<any> facet).delay,
-        facet,
-      }
-
-      return delayMap.media[m.id].delay;
     }
   }).length;
 }
 
 export function clock() {
   const clock = startTick([50, state.tickDelay, 2000], (tasks, intervals) => {
-    const delayMap: DelayMap = {
-      media: {},
-      facet: {},
-    };
     let exhaustedTasks = false;
 
     function addMoreMedia(tasks: Task[], limit: number) {
       taskLoop:
       for (const task of tasks) {
-        taskPendingCount(task, delayMap);
-
         if (task.active) {
           mediaLoop:
           for (const media of task.list) {
             if (media.selected) {
+              let mediaSource = media.getSource();
+              let mirrorStream = false;
+
+              if (mediaSource.type === "stream" && mediaSource.parentType === "mirror") {
+                mediaSource = mediaSources[mediaSource.parent];
+                mirrorStream = true;
+              }
+
+              const queueFacet = <any> (mirrorStream ? "mirrorstream" : (<any> sourceQueueMap)[mediaSource.type]);
+
               if (media.status !== MediaStatus.FINISHED
                   && media.status !== MediaStatus.ACTIVE
-                  && delayMap.media[media.id].delay) {
+                  && (media.queueId === null
+                      || mediaSource.type === "stream"
+                      || queueState(queueFacet, mediaSource.facetId, media.queueId) === QueueState.READY)) {
                 media.start();
+
+                if (media.queueId !== null) {
+                  advanceQueue(queueFacet, mediaSource.facetId);
+                }
 
                 limit--;
                 break mediaLoop;
@@ -104,7 +112,7 @@ export function clock() {
             }
           }
 
-          if (task.currentDl < taskPendingCount(task, delayMap)) {
+          if (task.currentDl < taskPendingCount(task)) {
             exhaustedTasks = false;
           }
         }
@@ -118,7 +126,7 @@ export function clock() {
 
     for (const task of getTasksByFairness(tasks)) {
       if (!exhaustedTasks && !state.maxGlobalConcurrentDl && !state.limitOnlyGlobal) {
-        while (!exhaustedTasks && task.currentDl < state.maxConcurrentDl && taskPendingCount(task, delayMap)) {
+        while (!exhaustedTasks && task.currentDl < state.maxConcurrentDl && taskPendingCount(task)) {
           exhaustedTasks = true;
           addMoreMedia([task], 1);
         }
@@ -141,6 +149,16 @@ export function clock() {
                 media.buffers = [];
                 media.bufferedBytes = 0;
                 media.outStream.end();
+
+                // FIXME: Tidy this up
+                const stream = media.getSource();
+                if (stream.parentType === MediaSourceType.Mirror) {
+                  const mirror = mediaSources[stream.parent];
+                  const facet = getFacetById("mirror", mirror.facetId);
+
+                  // Mark mirror facet as done
+                  facet.connectionCount--;
+                }
             } else {
               media.outStream.write(bufferConcat(media.buffers));
               media.bytes += bytes;
@@ -152,6 +170,11 @@ export function clock() {
         }
       }
     }
+
+    // Process queue
+    processQueue(mediaIds => {
+      // FIXME: Do something here
+    });
   });
 
   clock.start();

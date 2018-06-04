@@ -145,6 +145,7 @@ class sanitize {
             weight: [false, "number", 0],
             cache: [false, "boolean", false],
             delay: [false, ["number", "function:2"], 500],
+            maxConnections: [false, "number", 0],
             resolver: [false, "string", "basic"],
             streamResolver: [false, "string", "basic"],
             hosts: [true, "array:string"],

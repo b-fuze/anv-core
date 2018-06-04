@@ -20,6 +20,7 @@ register("mirror", {
   weight: 0,
   cache: false,
   delay: 350,
+  maxConnections: 3,
   resolver: "basic",
   streamResolver: "basic",
   hosts: [

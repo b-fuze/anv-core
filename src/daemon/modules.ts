@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import {setInstance, RegisterFacetTypeMap} from "anv";
 import {sanitize} from "./sanitize";
-import {registerFacet, getFacet, getFacetById, GenericResolver} from "./facets";
+import {Mirror, registerFacet, getFacet, getFacetById, GenericResolver} from "./facets";
 
 let curModule: string = null;
 
@@ -32,6 +32,10 @@ setInstance(class {
         } else {
           // Add lastUse
           data.lastUse = 0;
+
+          if (facet === "mirror") {
+            (<Mirror> data).connectionCount = 0;
+          }
 
           registerFacet(facet, facetId, <any>data);
           console.log("Registered " + facet + " " + facetId);

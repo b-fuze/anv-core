@@ -62,13 +62,55 @@ if (args.ws) {
 }
 
 // Create fake client request
-state.task.dlPath = "/home/b-fuse/old/tmp/anv-test";
+state.task.dlPath = "/home/b-fuse/old/tmp/anv-test/test";
+state.maxGlobalConcurrentDl = 5;
+state.limitOnlyGlobal = true;
 
 console.log("ANV & Client test");
-const taskUrl = "http://www.animerush.tv/anime/Isekai-wa-Smartphone-to-Tomo-ni/";
-const taskUrl2 = "http://www.animerush.tv/anime/Komori-san-wa-Kotowarenai/";
+const taskUrl = "http://www.animerush.tv/anime/shakugan-no-shana/";
+const taskUrl2 = "http://www.animerush.tv/anime/shakugan-no-shana-ii/";
+const taskUrl3 = "http://www.animerush.tv/anime/shakugan-no-shana-iii/";
 
-// instructions.load(taskUrl, (err, taskId) => {
+instructions.load(taskUrl, (err, taskId) => {
+  if (err) {
+    console.error(err);
+  } else {
+    const task = crud.getTask(taskId);
+
+    task.on("load", load => {
+      // Start task
+      task.active = true;
+    });
+  }
+});
+
+instructions.load(taskUrl2, (err, taskId) => {
+  if (err) {
+    console.error(err);
+  } else {
+    const task = crud.getTask(taskId);
+
+    task.on("load", load => {
+      // Start task
+      task.active = true;
+    });
+  }
+});
+
+instructions.load(taskUrl3, (err, taskId) => {
+  if (err) {
+    console.error(err);
+  } else {
+    const task = crud.getTask(taskId);
+
+    task.on("load", load => {
+      // Start task
+      task.active = true;
+    });
+  }
+});
+
+// instructions.load(taskUrl4, (err, taskId) => {
 //   if (err) {
 //     console.error(err);
 //   } else {
@@ -81,20 +123,6 @@ const taskUrl2 = "http://www.animerush.tv/anime/Komori-san-wa-Kotowarenai/";
 //     });
 //   }
 // });
-
-instructions.load(taskUrl2, (err, taskId) => {
-  if (err) {
-    console.error(err);
-  } else {
-    const task = crud.getTask(taskId);
-
-    task.on("load", load => {
-
-      // Start task
-      task.active = true;
-    });
-  }
-});
 
 mainClock.event.on("tick", intervals => {
   if (intervals[1000]) {
