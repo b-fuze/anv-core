@@ -6,99 +6,84 @@ const tasks_1 = require("./tasks");
 const tick_1 = require("./tick");
 const facets_1 = require("./facets");
 const queue_1 = require("./queue");
-const mediaFacetMap = {
-    [tasks_1.MediaSourceType.Direct]: "provider",
-    [tasks_1.MediaSourceType.Mirror]: "mirror",
-    [tasks_1.MediaSourceType.Stream]: "streamresolver",
-};
-// FIXME: Unnecessary term clash made this a requirement
-const sourceQueueMap = {
-    direct: "provider",
-    mirror: "mirror",
-};
 function taskActiveCount(task) {
-    return task.list.filter(m => (m.status === tasks_1.MediaStatus.ACTIVE)).length;
+    return task.list.filter(m => (m.selected && m.status === tasks_1.MediaStatus.ACTIVE)).length;
 }
 function taskFinishedCount(task) {
-    return task.list.filter(m => (m.status === tasks_1.MediaStatus.FINISHED)).length;
+    return task.list.filter(m => (m.selected && m.status === tasks_1.MediaStatus.FINISHED)).length;
 }
 function getTasksByFairness(tasks) {
     return (state_1.state.taskFairness
         ? tasks.slice().sort((a, b) => (taskFinishedCount(a) - taskFinishedCount(b)) + (taskActiveCount(a) - taskActiveCount(b)))
         : tasks.slice());
 }
-function taskPendingCount(task, delayMap) {
-    return task.list.filter(m => {
-        const eligible = m.selected && m.status !== tasks_1.MediaStatus.FINISHED && m.status !== tasks_1.MediaStatus.ACTIVE;
-        if (eligible) {
-            if (m.queueId === null) {
-                // This media hasn't even been queued yet
-                return true;
-            }
-            else {
-                let source = m.getSource();
-                let mirrorStream = false;
-                if (source.type === "stream" && source.parentType === "mirror") {
-                    source = tasks_1.mediaSources[source.parent];
-                    mirrorStream = true;
-                }
-                return queue_1.queueState((mirrorStream ? "mirrorstream" : sourceQueueMap[source.type]), source.facetId, m.queueId) === queue_1.QueueState.READY;
-            }
-        }
-    }).length;
+// FIXME: Unnecessary term clash made this a requirement
+const sourceQueueMap = {
+    direct: "provider",
+    mirror: "mirror",
+};
+function exhuastedConcurrent(task, activeMedia, setActive) {
+    return (state_1.state.maxGlobalConcurrentDl
+        && state_1.tmpState.currentDl >= state_1.state.maxGlobalConcurrentDl
+        && activeMedia === task.currentDl
+        || !state_1.state.maxGlobalConcurrentDl
+            && activeMedia >= state_1.state.maxConcurrentDl);
 }
 function clock() {
     const clock = tick_1.startTick([50, state_1.state.tickDelay, 2000], (tasks, intervals) => {
-        let exhaustedTasks = false;
-        function addMoreMedia(tasks, limit) {
-            taskLoop: for (const task of tasks) {
-                if (task.active) {
-                    mediaLoop: for (const media of task.list) {
-                        if (media.selected) {
-                            let mediaSource = media.getSource();
-                            let mirrorStream = false;
-                            if (mediaSource.type === "stream" && mediaSource.parentType === "mirror") {
-                                mediaSource = tasks_1.mediaSources[mediaSource.parent];
-                                mirrorStream = true;
-                            }
-                            const queueFacet = (mirrorStream ? "mirrorstream" : sourceQueueMap[mediaSource.type]);
-                            if (media.status !== tasks_1.MediaStatus.FINISHED
-                                && media.status !== tasks_1.MediaStatus.ACTIVE
-                                && (media.queueId === null
-                                    || mediaSource.type === "stream"
-                                    || queue_1.queueState(queueFacet, mediaSource.facetId, media.queueId) === queue_1.QueueState.READY)) {
-                                media.start();
-                                if (media.queueId !== null) {
-                                    queue_1.advanceQueue(queueFacet, mediaSource.facetId);
+        let available = state_1.state.maxGlobalConcurrentDl
+            ? state_1.state.maxGlobalConcurrentDl - state_1.tmpState.currentDl
+            : 1;
+        let oldAvailable = available;
+        let iterations = 0;
+        // Add new media
+        while (!iterations || available > 0 && !(iterations && oldAvailable === available)) {
+            oldAvailable = available;
+            for (const task of getTasksByFairness(tasks)) {
+                let activeMedia = 0;
+                let setActive = 0;
+                mediaLoop: for (const media of task.list) {
+                    if (media.selected) {
+                        if (media.status !== tasks_1.MediaStatus.FINISHED) {
+                            if (media.status !== tasks_1.MediaStatus.ACTIVE) {
+                                let mediaSource = media.getSource();
+                                let mirrorStream = false;
+                                if (mediaSource.type === "stream" && mediaSource.parentType === "mirror") {
+                                    mediaSource = tasks_1.mediaSources[mediaSource.parent];
+                                    mirrorStream = true;
                                 }
-                                limit--;
+                                const queueFacet = (mirrorStream ? "mirrorstream" : sourceQueueMap[mediaSource.type]);
+                                const queueId = media.queueId;
+                                if (media.status === tasks_1.MediaStatus.PENDING
+                                    && queue_1.queueState(queueFacet, mediaSource.facetId, media.queueId) === queue_1.QueueState.READY
+                                    || !exhuastedConcurrent(task, activeMedia, setActive)
+                                        && media.queueId === null) {
+                                    media.start();
+                                    setActive++;
+                                    if (queueId !== null) {
+                                        queue_1.advanceQueue(queueFacet, mediaSource.facetId, true, true);
+                                    }
+                                    if (!state_1.state.maxGlobalConcurrentDl) {
+                                        available--;
+                                    }
+                                }
+                            }
+                            if (media.status === tasks_1.MediaStatus.ACTIVE || media.status === tasks_1.MediaStatus.PENDING) {
+                                activeMedia++;
+                            }
+                            if (state_1.state.taskFairness && setActive) {
                                 break mediaLoop;
                             }
-                            else if (media.status === tasks_1.MediaStatus.PENDING) {
-                                limit--;
+                            if (exhuastedConcurrent(task, activeMedia, setActive)) {
+                                break mediaLoop;
                             }
                         }
-                        if (!limit) {
-                            continue taskLoop;
-                        }
-                    }
-                    if (task.currentDl < taskPendingCount(task)) {
-                        exhaustedTasks = false;
                     }
                 }
             }
+            iterations++;
         }
-        while (!exhaustedTasks && state_1.state.maxGlobalConcurrentDl && state_1.tmpState.currentDl < state_1.state.maxGlobalConcurrentDl) {
-            exhaustedTasks = true;
-            addMoreMedia(getTasksByFairness(tasks), state_1.state.maxGlobalConcurrentDl - state_1.tmpState.currentDl);
-        }
-        for (const task of getTasksByFairness(tasks)) {
-            if (!exhaustedTasks && !state_1.state.maxGlobalConcurrentDl && !state_1.state.limitOnlyGlobal) {
-                while (!exhaustedTasks && task.currentDl < state_1.state.maxConcurrentDl && taskPendingCount(task)) {
-                    exhaustedTasks = true;
-                    addMoreMedia([task], 1);
-                }
-            }
+        for (const task of tasks) {
             if (intervals[state_1.state.tickDelay]) {
                 for (const media of task.list) {
                     if (media.status === tasks_1.MediaStatus.ACTIVE && media.outStream && media.request) {
