@@ -19,7 +19,7 @@ register("mirror", {
   description: "ANV MP4Upload Mirror",
   weight: 0,
   cache: false,
-  delay: 350,
+  delay: 1000,
   maxConnections: 3,
   resolver: "basic",
   streamResolver: "basic",
