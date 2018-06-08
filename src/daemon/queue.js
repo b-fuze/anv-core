@@ -9,10 +9,10 @@ const queueFacetMap = {
 };
 var QueueState;
 (function (QueueState) {
-    QueueState[QueueState["EARLY"] = -1] = "EARLY";
-    QueueState[QueueState["CURRENT"] = 0] = "CURRENT";
-    QueueState[QueueState["PAST"] = 1] = "PAST";
-    QueueState[QueueState["READY"] = 2] = "READY";
+    QueueState["EARLY"] = "E";
+    QueueState["CURRENT"] = "C";
+    QueueState["PAST"] = "P";
+    QueueState["READY"] = "R";
 })(QueueState = exports.QueueState || (exports.QueueState = {}));
 ;
 const queue = {
@@ -25,10 +25,12 @@ function queueAdd(facet, facetId, callback, id = null) {
     let facetQueue = facetMap[facetId];
     if (!facetQueue) {
         facetQueue = facetMap[facetId] = {
-            index: 0,
+            index: -1,
             queue: [],
             state: -1,
             ready: false,
+            // FIXME: Maybe rename this to "lock" or such
+            open: true,
         };
     }
     facetQueue.queue.push([id, callback]);
@@ -46,12 +48,13 @@ function queueState(facet, facetId, queueId) {
         : offset);
 }
 exports.queueState = queueState;
-function advanceQueue(facet, facetId, maintainState = false) {
+function advanceQueue(facet, facetId, onlyOpen = false, open = true, ready = false) {
     const facetQueue = queue[facet][facetId];
-    facetQueue.index++;
-    if (!maintainState) {
-        facetQueue.ready = false;
+    if (!onlyOpen) {
+        facetQueue.index++;
     }
+    facetQueue.open = open;
+    facetQueue.ready = ready;
 }
 exports.advanceQueue = advanceQueue;
 function processQueue(callback) {
@@ -60,12 +63,11 @@ function processQueue(callback) {
     for (const facetType of ["mirror", "provider", "mirrorstream"]) {
         facetLoop: for (const facetId of Object.keys(queue[facetType])) {
             const facetQueue = queue[facetType][facetId];
-            const facet = facets_1.getFacetById(queueFacetMap[facetType], facetId);
-            const queueItem = facetQueue.queue[facetQueue.index];
-            if (!queueItem) {
-                // The index passed all the items
-                break facetLoop;
+            if (!facetQueue.open) {
+                // This facet queue isn't ready to advance yet
+                continue facetLoop;
             }
+            const facet = facets_1.getFacetById(queueFacetMap[facetType], facetId);
             let ready;
             let key;
             switch (facetType) {
@@ -82,15 +84,20 @@ function processQueue(callback) {
                     key = "connectionCount";
                     break;
             }
+            let queueItem = facetQueue.queue[facetQueue.index];
             if (ready) {
                 facetQueue.ready = true;
                 facetQueue.state = facet[key];
-                if (queueItem[1]) {
+                queueItem = facetQueue.queue[facetQueue.index + 1];
+                if (queueItem && queueItem[1]) {
+                    advanceQueue(facetType, facetId, false, true);
                     queueItem[1]();
-                    advanceQueue(facetType, facetId);
+                }
+                else {
+                    advanceQueue(facetType, facetId, false, false, true);
                 }
             }
-            if (!queueItem[1]) {
+            if (queueItem && !queueItem[1]) {
                 mediaIds.push(queueItem[0]);
             }
         }

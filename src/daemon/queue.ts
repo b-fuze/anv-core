@@ -25,15 +25,16 @@ export type Queue = {
       queue: QueueItem[];
       state: number;
       ready: boolean;
+      open: boolean;
     };
   }
 }
 
 export enum QueueState {
-  EARLY = -1,
-  CURRENT = 0,
-  PAST = 1,
-  READY = 2,
+  EARLY = "E",
+  CURRENT = "C",
+  PAST = "P",
+  READY = "R",
 };
 
 const queue: Queue = {
@@ -48,10 +49,12 @@ export function queueAdd(facet: keyof QueueFacet, facetId: string, callback: () 
 
   if (!facetQueue) {
     facetQueue = facetMap[facetId] = {
-      index: 0,
+      index: -1,
       queue: [],
       state: -1,
       ready: false,
+      // FIXME: Maybe rename this to "lock" or such
+      open: true,
     };
   }
 
@@ -59,7 +62,7 @@ export function queueAdd(facet: keyof QueueFacet, facetId: string, callback: () 
   return facetQueue.queue.length - 1;
 }
 
-export function queueState(facet: keyof QueueFacet, facetId: string, queueId: number): QueueState {
+export function queueState(facet: keyof QueueFacet, facetId: string, queueId: number): QueueState | number {
   const facetQueue = queue[facet][facetId];
 
   if (!facetQueue) {
@@ -72,14 +75,15 @@ export function queueState(facet: keyof QueueFacet, facetId: string, queueId: nu
           : offset);
 }
 
-export function advanceQueue(facet: keyof QueueFacet, facetId: string, maintainState = false) {
+export function advanceQueue(facet: keyof QueueFacet, facetId: string, onlyOpen = false, open = true, ready = false) {
   const facetQueue = queue[facet][facetId];
 
-  facetQueue.index++;
-
-  if (!maintainState) {
-    facetQueue.ready = false;
+  if (!onlyOpen) {
+    facetQueue.index++;
   }
+
+  facetQueue.open = open;
+  facetQueue.ready = ready;
 }
 
 export function processQueue(callback: (ids: number[]) => void) {
@@ -90,13 +94,13 @@ export function processQueue(callback: (ids: number[]) => void) {
     facetLoop:
     for (const facetId of Object.keys(queue[<keyof QueueFacet> facetType])) {
       const facetQueue = queue[<keyof QueueFacet> facetType][facetId];
-      const facet = getFacetById(queueFacetMap[<keyof QueueFacet> facetType], facetId);
-      const queueItem = facetQueue.queue[facetQueue.index];
 
-      if (!queueItem) {
-        // The index passed all the items
-        break facetLoop;
+      if (!facetQueue.open) {
+        // This facet queue isn't ready to advance yet
+        continue facetLoop;
       }
+
+      const facet = getFacetById(queueFacetMap[<keyof QueueFacet> facetType], facetId);
 
       let ready: boolean;
       let key: string;
@@ -116,17 +120,23 @@ export function processQueue(callback: (ids: number[]) => void) {
           break;
       }
 
+      let queueItem: QueueItem = facetQueue.queue[facetQueue.index];
+
       if (ready) {
         facetQueue.ready = true;
         facetQueue.state = (<any> facet)[key];
 
-        if (queueItem[1]) {
+        queueItem = facetQueue.queue[facetQueue.index + 1];
+
+        if (queueItem && queueItem[1]) {
+          advanceQueue(<keyof QueueFacet> facetType, facetId, false, true);
           (<any> queueItem[1])();
-          advanceQueue(<keyof QueueFacet> facetType, facetId);
+        } else {
+          advanceQueue(<keyof QueueFacet> facetType, facetId, false, false, true);
         }
       }
 
-      if (!queueItem[1]) {
+      if (queueItem && !queueItem[1]) {
         mediaIds.push(queueItem[0]);
       }
     }
