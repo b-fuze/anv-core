@@ -151,19 +151,22 @@ class Media {
     setStatus(status) {
         if (status !== this.status) {
             const task = this.getTask();
+            const oldStatus = this.status;
             this.status = status;
-            switch (status) {
-                case MediaStatus.IDLE:
-                case MediaStatus.PAUSED:
-                case MediaStatus.PENDING:
-                case MediaStatus.FINISHED:
-                    task.currentDl--;
-                    state_1.tmpState.currentDl--;
-                    break;
-                case MediaStatus.ACTIVE:
-                    task.currentDl++;
-                    state_1.tmpState.currentDl++;
-                    break;
+            let compare = [oldStatus, status].map(status => {
+                switch (status) {
+                    case MediaStatus.IDLE:
+                    case MediaStatus.PAUSED:
+                    case MediaStatus.FINISHED:
+                        return -1;
+                    case MediaStatus.PENDING:
+                    case MediaStatus.ACTIVE:
+                        return 1;
+                }
+            });
+            if (compare[0] !== compare[1]) {
+                state_1.tmpState.currentDl += compare[1];
+                task.currentDl += compare[1];
             }
         }
     }
@@ -173,9 +176,27 @@ class Media {
             && this.status !== MediaStatus.PENDING) {
             return;
         }
-        this.setStatus(MediaStatus.ACTIVE);
-        const source = this.sources[this.source];
-        this.resolveSource(source);
+        const source = this.getSource();
+        if (this.queueId === null) {
+            this.addQueue(source);
+        }
+        else {
+            this.setStatus(MediaStatus.ACTIVE);
+            this.resolveSource(source);
+        }
+    }
+    addQueue(source) {
+        const facetType = exports.mediaSourceFacetMap[source.type];
+        const facet = facets_1.getFacetById(facetType, source.facetId);
+        const facetQueueMap = {
+            direct: "provider",
+            mirror: "mirror",
+            // FIXME: No providerstream atm
+            stream: "providerstream",
+        };
+        // Add to queue
+        this.queueId = queue_1.queueAdd(facetQueueMap[source.type], facet.facetId, null, this.id);
+        this.setStatus(MediaStatus.PENDING);
     }
     stop(finished = false) {
         if (this.status !== MediaStatus.ACTIVE && this.status !== MediaStatus.FINISHED) {
@@ -233,17 +254,7 @@ class Media {
                             console.log("No sources for Media #" + this.id + " - " + this.fileName);
                             return this.setStatus(MediaStatus.FINISHED);
                         }
-                        const facetType = exports.mediaSourceFacetMap[curSource.type];
-                        const facet = facets_1.getFacetById(facetType, curSource.facetId);
-                        const facetQueueMap = {
-                            direct: "provider",
-                            mirror: "mirror",
-                            // FIXME: No providerstream atm
-                            stream: "providerstream",
-                        };
-                        // Add to queue
-                        this.queueId = queue_1.queueAdd(facetQueueMap[curSource.type], facet.facetId, null, this.id);
-                        this.setStatus(MediaStatus.PENDING);
+                        this.addQueue(curSource);
                     }
                 });
                 break;
@@ -270,7 +281,6 @@ class Media {
                     this.nextSource();
                     this.queueId = queue_1.queueAdd("mirrorstream", mirror.facetId, null, this.id);
                     this.setStatus(MediaStatus.PENDING);
-                    // this.resolveSource(this.getSource());
                 });
                 break;
             case "stream":

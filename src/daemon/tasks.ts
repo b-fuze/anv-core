@@ -212,20 +212,25 @@ class Media {
   setStatus(status: MediaStatus) {
     if (status !== this.status) {
       const task = this.getTask();
+
+      const oldStatus = this.status;
       this.status = status;
 
-      switch (status) {
-        case MediaStatus.IDLE:
-        case MediaStatus.PAUSED:
-        case MediaStatus.PENDING:
-        case MediaStatus.FINISHED:
-          task.currentDl--;
-          tmpState.currentDl--;
-          break;
-        case MediaStatus.ACTIVE:
-          task.currentDl++;
-          tmpState.currentDl++;
-          break;
+      let compare = [oldStatus, status].map(status => {
+        switch (status) {
+          case MediaStatus.IDLE:
+          case MediaStatus.PAUSED:
+          case MediaStatus.FINISHED:
+            return -1;
+          case MediaStatus.PENDING:
+          case MediaStatus.ACTIVE:
+            return 1;
+        }
+      });
+
+      if (compare[0] !== compare[1]) {
+        tmpState.currentDl += compare[1];
+        task.currentDl += compare[1];
       }
     }
   }
@@ -237,11 +242,33 @@ class Media {
       return;
     }
 
-    this.setStatus(MediaStatus.ACTIVE);
 
-    const source = this.sources[this.source];
+    const source = this.getSource();
 
-    this.resolveSource(source);
+    if (this.queueId === null) {
+      this.addQueue(source);
+    } else {
+      this.setStatus(MediaStatus.ACTIVE);
+      this.resolveSource(source);
+    }
+  }
+
+  addQueue(source: MediaSource) {
+    const facetType = <keyof FacetStore> mediaSourceFacetMap[source.type];
+    const facet = getFacetById(facetType, source.facetId);
+
+    const facetQueueMap = <{
+      [facet: string]: string;
+    }> {
+      direct: "provider",
+      mirror: "mirror",
+      // FIXME: No providerstream atm
+      stream: "providerstream",
+    }
+
+    // Add to queue
+    this.queueId = queueAdd(<keyof QueueFacet> facetQueueMap[source.type], facet.facetId, null, this.id);
+    this.setStatus(MediaStatus.PENDING);
   }
 
   stop(finished = false) {
@@ -314,21 +341,7 @@ class Media {
               return this.setStatus(MediaStatus.FINISHED);
             }
 
-            const facetType = <keyof FacetStore> mediaSourceFacetMap[curSource.type];
-            const facet = getFacetById(facetType, curSource.facetId);
-
-            const facetQueueMap = <{
-              [facet: string]: string;
-            }> {
-              direct: "provider",
-              mirror: "mirror",
-              // FIXME: No providerstream atm
-              stream: "providerstream",
-            }
-
-            // Add to queue
-            this.queueId = queueAdd(<keyof QueueFacet> facetQueueMap[curSource.type], facet.facetId, null, this.id);
-            this.setStatus(MediaStatus.PENDING);
+            this.addQueue(curSource);
           }
         });
         break;
@@ -361,7 +374,6 @@ class Media {
           this.nextSource();
           this.queueId = queueAdd("mirrorstream", mirror.facetId, null, this.id);
           this.setStatus(MediaStatus.PENDING);
-          // this.resolveSource(this.getSource());
         });
         break;
       case "stream":
