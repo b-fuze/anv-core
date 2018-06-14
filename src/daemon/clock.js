@@ -39,7 +39,10 @@ function clock() {
         // Add new media
         while (!iterations || available > 0 && !(iterations && oldAvailable === available)) {
             oldAvailable = available;
-            for (const task of getTasksByFairness(tasks)) {
+            taskLoop: for (const task of getTasksByFairness(tasks)) {
+                if (!task.active) {
+                    continue taskLoop;
+                }
                 let activeMedia = 0;
                 let setActive = 0;
                 mediaLoop: for (const media of task.list) {

@@ -45,7 +45,12 @@ export function clock() {
     while (!iterations || available > 0 && !(iterations && oldAvailable === available)) {
       oldAvailable = available;
 
+      taskLoop:
       for (const task of getTasksByFairness(tasks)) {
+        if (!task.active) {
+          continue taskLoop;
+        }
+
         let activeMedia = 0;
         let setActive = 0;
 
