@@ -103,12 +103,7 @@ function clock() {
                             media.outStream.end();
                             // FIXME: Tidy this up
                             const stream = media.getSource();
-                            if (stream.parentType === tasks_1.MediaSourceType.Mirror) {
-                                const mirror = tasks_1.mediaSources[stream.parent];
-                                const facet = facets_1.getFacetById("mirror", mirror.facetId);
-                                // Mark mirror facet as done
-                                facet.connectionCount--;
-                            }
+                            media.decreaseMirrorConn(stream);
                         }
                         else {
                             media.outStream.write(utils_1.bufferConcat(media.buffers));

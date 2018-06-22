@@ -394,10 +394,18 @@ class Media {
       // Give up
       console.log(`Skipping bad source #${ media.source } (${ media.sources[media.source].url }) in Media #${ media.id } - ${ media.fileName }`);
       media.sourceAttempts = 0;
+
+      // Remove connections for this source FIXME: This might be bad design
+      this.decreaseMirrorConn(this.getSource());
+
+      // Go to the next source
       this.nextSource();
 
-      if (media.sources[media.source]) {
-        media.resolveSource(this.getSource());
+      if (this.getSource()) {
+        // FIXME: Use queue here or smth
+        setTimeout(() => {
+          media.resolveSource(this.getSource());
+        }, 1000);
       } else {
         media.setStatus(MediaStatus.FINISHED);
         media.exhuastedSources = true;
@@ -408,7 +416,20 @@ class Media {
       media.sourceAttempts++;
       console.log(`Reattempt #${ media.sourceAttempts } for source #${ media.source } in Media #${ media.id } - ${ media.fileName }`);
 
-      media.resolveSource(media.sources[media.source]);
+      // FIXME: Use queue here or smth
+      setTimeout(() => {
+        media.resolveSource(this.getSource());
+      }, 1000);
+    }
+  }
+
+  decreaseMirrorConn(stream: MediaSourceStream) {
+    if (stream.parentType === MediaSourceType.Mirror) {
+      const mirror = mediaSources[stream.parent];
+      const facet = getFacetById("mirror", mirror.facetId);
+
+      // Mark mirror facet as done
+      facet.connectionCount--;
     }
   }
 
@@ -458,7 +479,7 @@ class Media {
     this.request = sresolver.resolve(stream.url, this.bytes, out, null, stream.options || {});
     sresolver.lastUse = Date.now();
 
-    if (parentSource) {
+    if (parentSource && !this.sourceAttempts) {
       parentSource.connectionCount++;
     }
   }
