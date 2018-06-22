@@ -32,6 +32,7 @@ register("provider", {
     ["mp4upload-hd", "MP4Upload HD"],
     ["mp4upload", "MP4Upload"],
     ["yourupload-hd", "Your Upload HD"],
+    ["goplayer", "GoPlayer"],
     ["yourupload", "Your Upload"],
     ["raw", "Raw Unsubbed"],
   ],
@@ -68,7 +69,7 @@ register("provider", {
 
     if (direct) {
       const mirror = jSh("#episodes .episode_on")[0];
-      const supported = mirror.jSh("h3")[0].jSh(0).textContent.toLowerCase().match(/mp4upload|yourupload/);
+      const supported = mirror.jSh("h3")[0].jSh(0).textContent.toLowerCase().match(/mp4upload|yourupload|goplayer/);
       const hd = mirror.jSh(".hdlogo")[0] ? "-hd" : "";
 
       return [{
@@ -82,7 +83,7 @@ register("provider", {
     for (const mirrorDiv of Array.from(jSh("#episodes").childNodes)) {
       if (mirrorDiv.tagName === "DIV") {
         const mirror = jSh(mirrorDiv);
-        const supported = mirror.jSh("h3")[0].jSh(0).textContent.toLowerCase().match(/mp4upload|yourupload/);
+        const supported = mirror.jSh("h3")[0].jSh(0).textContent.toLowerCase().match(/mp4upload|yourupload|goplayer/);
 
         if (supported) {
           const hd = mirror.jSh(".hdlogo")[0] ? "-hd" : "";
