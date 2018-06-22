@@ -11,7 +11,7 @@ export interface FacetTiers {
   }
 }
 
-type JSType = "string" | "number" | "boolean" | "undefined" | "null" | "array" | "object" | "function";
+export type JSType = "string" | "number" | "boolean" | "undefined" | "null" | "array" | "object" | "function";
 export function type(value: any): JSType {
   const base = typeof value;
 
