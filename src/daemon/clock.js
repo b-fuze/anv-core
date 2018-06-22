@@ -1,11 +1,19 @@
 "use strict";
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const fs = __importStar(require("fs"));
 const utils_1 = require("./utils");
 const state_1 = require("./state");
 const tasks_1 = require("./tasks");
 const tick_1 = require("./tick");
-const facets_1 = require("./facets");
 const queue_1 = require("./queue");
+const serialize_1 = require("./serialize");
 function taskActiveCount(task) {
     return task.list.filter(m => (m.selected && m.status === tasks_1.MediaStatus.ACTIVE)).length;
 }
@@ -86,8 +94,8 @@ function clock() {
             }
             iterations++;
         }
-        for (const task of tasks) {
-            if (intervals[state_1.state.tickDelay]) {
+        if (intervals[state_1.state.tickDelay]) {
+            for (const task of tasks) {
                 for (const media of task.list) {
                     if (media.status === tasks_1.MediaStatus.ACTIVE && media.outStream && media.request) {
                         const now = Date.now();
@@ -113,6 +121,17 @@ function clock() {
                             media.lastUpdate = Date.now();
                         }
                     }
+                }
+            }
+            // Serialize
+            for (const task of tasks) {
+                if (task.loaded) {
+                    const serialized = serialize_1.serialize(task);
+                    fs.writeFile(task.metaFile, JSON.stringify(serialized), err => {
+                        if (err) {
+                            console.log("ANV: Error writing task metadata for #" + task.id + " - " + task.title);
+                        }
+                    });
                 }
             }
         }

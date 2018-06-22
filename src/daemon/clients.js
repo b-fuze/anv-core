@@ -40,6 +40,7 @@ exports.instructions = {
                             task.title = metadata.title;
                             task.cover = metadata.cover;
                             task.dlDir = task.settings.dlPath + path.sep + tasks_1.getSimpleName(task.title);
+                            task.metaFile = task.dlDir + path.sep + ".anv" + path.sep + "meta";
                             let fileNameBase = task.settings.minimalFileName ? tasks_1.getInitials(task.title) : tasks_1.getSimpleName(task.title);
                             if (/^.+\d$/.test(fileNameBase)) {
                                 fileNameBase += "-";
@@ -73,8 +74,10 @@ exports.instructions = {
                                 if (err && err.code === 'ENOENT') {
                                     fs.mkdir(task.dlDir, (err) => {
                                         if (!err) {
-                                            task.loaded = true;
-                                            task.triggerEvent("load", true);
+                                            fs.mkdir(task.dlDir + path.sep + ".anv", err => {
+                                                task.loaded = true;
+                                                task.triggerEvent("load", true);
+                                            });
                                         }
                                         else {
                                             console.error("ANV: Error creating directory for task " + task.id, err);

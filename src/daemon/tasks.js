@@ -413,6 +413,7 @@ var MediaSourceType;
 class MediaSource {
     constructor() {
         this.parent = null;
+        this.parentType = null;
         this.resolved = false;
         this.options = {};
         this.id = exports.mediaSources.length;

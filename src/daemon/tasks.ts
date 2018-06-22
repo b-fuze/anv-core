@@ -121,6 +121,7 @@ class Task extends Component<StateModel, TaskEvents> {
   currentDl: number = 0;
   settings = deepCopy(state.task);
   dlDir: string;
+  metaFile: string;
   loaded: boolean = false;
 
   constructor(
@@ -540,7 +541,7 @@ export class MediaSource {
   facetType: string;
   url: string;
   parent: number = null;
-  parentType: MediaSourceType;
+  parentType: MediaSourceType = null;
   resolved: boolean = false;
   options: {
     [option: string]: any;

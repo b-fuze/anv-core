@@ -1,9 +1,11 @@
+import * as fs from "fs";
 import {bufferConcat} from "./utils";
 import {state, tmpState} from "./state";
 import {Task, mediaSources, MediaStatus, MediaSourceType} from "./tasks";
 import {startTick} from "./tick";
 import {getFacet, getFacetById} from "./facets";
 import {advanceQueue, processQueue, queueState, QueueState} from "./queue";
+import {serialize} from "./serialize";
 
 function taskActiveCount(task: Task) {
   return task.list.filter(m => (m.selected && m.status === MediaStatus.ACTIVE)).length;
@@ -105,8 +107,8 @@ export function clock() {
       iterations++;
     }
 
-    for (const task of tasks) {
-      if (intervals[state.tickDelay]) {
+    if (intervals[state.tickDelay]) {
+      for (const task of tasks) {
         for (const media of task.list) {
           if (media.status === MediaStatus.ACTIVE && media.outStream && media.request) {
             const now = Date.now();
@@ -135,6 +137,18 @@ export function clock() {
               media.lastUpdate = Date.now();
             }
           }
+        }
+      }
+
+      // Serialize
+      for (const task of tasks) {
+        if (task.loaded) {
+          const serialized = serialize(task);
+          fs.writeFile(task.metaFile, JSON.stringify(serialized), err => {
+            if (err) {
+              console.log("ANV: Error writing task metadata for #" + task.id + " - " + task.title);
+            }
+          });
         }
       }
     }
