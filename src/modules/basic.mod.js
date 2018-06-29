@@ -87,8 +87,7 @@ register("streamresolver", {
 
     return {
       stop() {
-        // @ts-ignore
-        req.abort();
+        req.end();
       }
     }
   }
