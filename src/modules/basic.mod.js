@@ -30,6 +30,7 @@ register("genericresolver", {
       const boundjSh = jSh.bind(dom.window.document);
       boundjSh.dom = dom;
       boundjSh.html = data;
+      boundjSh.url = url;
 
       done(null, boundjSh);
     });
