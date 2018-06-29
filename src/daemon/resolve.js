@@ -2,6 +2,17 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const url_1 = require("url");
 const facets_1 = require("./facets");
+function resolvePromise(promise, done) {
+    // TODO: Add error reporting here
+    promise.then(resolution => {
+        if (resolution instanceof Promise) {
+            resolvePromise(resolution, done);
+        }
+        else {
+            done(null, resolution);
+        }
+    });
+}
 function resolveProvider(url, done) {
     const provider = facets_1.getFacetByHost("provider", url);
     if (provider) {
@@ -9,7 +20,13 @@ function resolveProvider(url, done) {
         if (gresolver) {
             gresolver.resolve(url, (err, resource) => {
                 if (!err) {
-                    done(null, provider.mediaList(resource));
+                    const resolution = provider.mediaList(resource);
+                    if (resolution instanceof Promise) {
+                        resolvePromise(resolution, done);
+                    }
+                    else {
+                        done(null, resolution);
+                    }
                 }
                 else {
                     done(err, null);

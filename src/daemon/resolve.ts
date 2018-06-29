@@ -11,7 +11,20 @@ import {
   getFacetByHost,
 } from "./facets";
 
-export function resolveProvider(url: string, done: (err: string, metadata: ProviderItem) => void) {
+type ResolveProviderCallback = (err: string, metadata: ProviderItem) => void;
+
+function resolvePromise(promise: Promise<any>, done: ResolveProviderCallback) {
+  // TODO: Add error reporting here
+  promise.then(resolution => {
+    if (resolution instanceof Promise) {
+      resolvePromise(resolution, done);
+    } else {
+      done(null, resolution);
+    }
+  });
+}
+
+export function resolveProvider(url: string, done: ResolveProviderCallback) {
   const provider = getFacetByHost("provider", url);
 
   if (provider) {
@@ -20,7 +33,13 @@ export function resolveProvider(url: string, done: (err: string, metadata: Provi
     if (gresolver) {
       gresolver.resolve(url, (err, resource) => {
         if (!err) {
-          done(null, provider.mediaList(resource));
+          const resolution: ProviderItem | Promise<any> = provider.mediaList(resource);
+
+          if (resolution instanceof Promise) {
+            resolvePromise(resolution, done);
+          } else {
+            done(null, resolution);
+          }
         } else {
           done(err, null);
         }
