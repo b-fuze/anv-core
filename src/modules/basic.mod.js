@@ -58,7 +58,7 @@ register("streamresolver", {
       url,
       // @ts-ignore
       headers: Object.assign({
-        "Byte-Range": `bytes=${ bytes }-`,
+        "Range": `bytes=${ bytes }-`,
       }, options.headers ? options.headers : {}),
       agentOptions: {
         rejectUnauthorized: options.hasOwnProperty("noCheckCertificate") ? !options.noCheckCertificate : true,
