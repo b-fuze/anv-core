@@ -46,11 +46,11 @@ setInstance(class {
     }
   }
 
-  static genericResolver(name: string, url: string, done: (data: any) => void): boolean {
+  static genericResolver(name: string, url: string, done: (data: any) => void, options: any): boolean {
     const resolver = <GenericResolver> getFacet("genericresolver", name);
 
     if (resolver) {
-      resolver.resolve(url, done);
+      resolver.resolve(url, done, options);
     }
 
     return !!resolver;

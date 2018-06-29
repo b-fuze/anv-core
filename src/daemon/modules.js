@@ -45,10 +45,10 @@ anv_1.setInstance(class {
             }
         }
     }
-    static genericResolver(name, url, done) {
+    static genericResolver(name, url, done, options) {
         const resolver = facets_1.getFacet("genericresolver", name);
         if (resolver) {
-            resolver.resolve(url, done);
+            resolver.resolve(url, done, options);
         }
         return !!resolver;
     }

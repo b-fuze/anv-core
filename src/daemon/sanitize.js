@@ -158,6 +158,9 @@ class sanitize {
             delay: [false, ["number", "function:2"], 500],
             maxConnections: [false, "number", 0],
             resolver: [false, "string", "basic"],
+            resolverOptions: [false, {
+                    noCheckCertificate: [false, "boolean", false]
+                }, {}],
             streamResolver: [false, "string", "basic"],
             hosts: [true, "array:string"],
             validUrl: [true, "function:1"],

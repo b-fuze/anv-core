@@ -8,8 +8,15 @@ register("genericresolver", {
   name: "basic",
   description: "Basic ANV generic request resolver",
   weight: 0,
-  resolve(url, done) {
-    request(url, (err, res, body) => {
+  resolve(url, done, optionsObj) {
+    let options = optionsObj;
+
+    request({
+      url,
+      agentOptions: {
+        rejectUnauthorized: options.hasOwnProperty("noCheckCertificate") ? !options.noCheckCertificate : true,
+      }
+    }, (err, res, body) => {
       if (!err) {
         done(null, body);
       } else {
