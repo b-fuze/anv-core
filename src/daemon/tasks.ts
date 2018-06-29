@@ -349,32 +349,56 @@ class Media {
       case "mirror":
         resolveMirror(source.url, (err, data) => {
           if (!data) {
+            if (err) {
+              console.error("ANV Mirror Error: " + err);
+            }
+
             // Mirror says the this is a bad source
             this.setStatus(MediaStatus.PENDING);
             return this.reattemptSources(true);
           }
 
-          const mirror = getFacetById("mirror", source.facetId);
-          const sresolver = getFacet("streamresolver", mirror.streamResolver);
-
           const mirrorResult: MirrorResult = type(data) === "object" ? data : {
             url: data,
           };
 
-          const stream = new MediaSourceStream(mirrorResult.url, mirror.streamResolver, sresolver.facetId);
-          stream.parent = source.id;
-          stream.parentType = MediaSourceType.Mirror;
+          if (mirrorResult.type === "mirror") {
+            const mirror = getFacetByHost("mirror", data.url);
 
-          if (type(mirrorResult.options) === "object")
-            stream.options = mirrorResult.options;
+            if (mirror) {
+              // We have to reresolve this mirror
+              const box = new MediaSourceMirror(data.url, mirror.name, mirror.facetId);
+              this.sources.splice(this.source + 1, 0, box);
 
-          this.sources.splice(this.source + 1, 0, stream);
-          source.resolved = true;
+              box.parent = source.id;
+              box.parentType = MediaSourceType.Mirror;
 
-          // Reresolve
-          this.nextSource();
-          this.queueId = queueAdd("mirrorstream", mirror.facetId, null, this.id);
-          this.setStatus(MediaStatus.PENDING);
+              this.nextSource();
+              const curSource = this.getSource();
+              this.addQueue(curSource);
+            } else {
+              // FIXME: ERROR
+            }
+          } else {
+            // We have a direct stream
+            const mirror = getFacetById("mirror", source.facetId);
+            const sresolver = getFacet("streamresolver", mirror.streamResolver);
+
+            const stream = new MediaSourceStream(mirrorResult.url, mirror.streamResolver, sresolver.facetId);
+            stream.parent = source.id;
+            stream.parentType = MediaSourceType.Mirror;
+
+            if (type(mirrorResult.options) === "object")
+              stream.options = mirrorResult.options;
+
+            this.sources.splice(this.source + 1, 0, stream);
+            source.resolved = true;
+
+            // Reresolve
+            this.nextSource();
+            this.queueId = queueAdd("mirrorstream", mirror.facetId, null, this.id);
+            this.setStatus(MediaStatus.PENDING);
+          }
         });
         break;
       case "stream":

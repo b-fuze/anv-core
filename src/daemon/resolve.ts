@@ -105,17 +105,17 @@ export function resolveMirror(url: string, done: (err: string, url: any) => void
     if (gresolver) {
       gresolver.resolve(url, (err, data) => {
         if (!err) {
-          const streamUrl = mirror.media(data, tier, url);
-          done(null, streamUrl);
+          const streamData = mirror.media(data, tier, url);
+          done(null, streamData);
         } else {
           done(err, null);
         }
-      });
+      }, mirror.resolverOptions || null);
 
       mirror.lastUse = Date.now();
       gresolver.lastUse = Date.now();
     } else {
-      done("No generic resolver found for mirror " + mirror.facetId, null);
+      done("No generic resolver \"" + mirror.resolver + "\" found for mirror " + mirror.facetId, null);
     }
   } else {
     done("No mirror found for " + parsed.host, null);
