@@ -187,8 +187,11 @@ class Media {
   totalAttempts: number = 0;
   exhuastedSources: boolean = false;
   request: MediaRequest = null;
+  streamData: {[k: string]: any} = {};
+  emptyStreamData = true;
 
   outStream: Writable;
+  bufferStream: MediaStream;
   buffers: Buffer[] = [];
   bufferedBytes: number = 0; // Cleared every tick, used to calculate download speed
   lastUpdate: number = 0;
@@ -286,6 +289,10 @@ class Media {
   }
 
   nextSource() {
+    // Reset stream data
+    this.streamData = {};
+    this.emptyStreamData = true;
+
     return ++this.source;
   }
 
@@ -334,8 +341,7 @@ class Media {
 
             // Reresolve
             this.nextSource();
-
-            const curSource = this.sources[this.source];
+            const curSource = this.getSource();
 
             if (!curSource) {
               console.log("No sources for Media #" + this.id + " - " + this.fileName);
@@ -494,10 +500,18 @@ class Media {
 
     const sresolver: StreamResolver = getFacetById("streamresolver", stream.facetId);
     const task = this.getTask();
-    const out = new MediaStream(this);
+    const out = this.bufferStream = new MediaStream(this);
 
     if (!this.outStream) {
-      this.outStream = fs.createWriteStream(task.dlDir + path.sep + this.fileName);
+      this.outStream = fs.createWriteStream(task.dlDir + path.sep + this.fileName, {
+        flags: "a",
+        encoding: "binary",
+      });
+    }
+
+    if (this.emptyStreamData) {
+      this.streamData = sresolver.streamData || {};
+      this.emptyStreamData = false;
     }
 
     this.lastUpdate = Date.now();
@@ -517,6 +531,7 @@ class Media {
 export
 class MediaStream extends Writable {
   mediaAttempt: number;
+  finished = false;
 
   constructor(
     public media: Media,
@@ -528,6 +543,19 @@ class MediaStream extends Writable {
 
   setSize(size: number) {
     this.media.size = size;
+
+  setStreamData(data: Media["streamData"]) {
+    if (this.mediaAttempt === this.media.totalAttempts && type(data) === "object") {
+      this.media.streamData = data;
+    }
+  }
+
+  getStreamData(): Media["streamData"] {
+    return this.media.streamData;
+  }
+
+  getAccumBytes(): number {
+    return this.media.bytes;
   }
 
   error(err: any) {
@@ -546,6 +574,8 @@ class MediaStream extends Writable {
   _final(callback: (err?: Error) => void) {
     // TODO: Wrap up things with our Media
     callback();
+
+    this.finished = true;
   }
 }
 

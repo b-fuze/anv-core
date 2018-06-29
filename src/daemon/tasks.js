@@ -136,6 +136,8 @@ class Media {
         this.totalAttempts = 0;
         this.exhuastedSources = false;
         this.request = null;
+        this.streamData = {};
+        this.emptyStreamData = true;
         this.buffers = [];
         this.bufferedBytes = 0; // Cleared every tick, used to calculate download speed
         this.lastUpdate = 0;
@@ -209,6 +211,9 @@ class Media {
         this.setStatus(MediaStatus.PAUSED);
     }
     nextSource() {
+        // Reset stream data
+        this.streamData = {};
+        this.emptyStreamData = true;
         return ++this.source;
     }
     getSource() {
@@ -249,7 +254,7 @@ class Media {
                         source.resolved = true;
                         // Reresolve
                         this.nextSource();
-                        const curSource = this.sources[this.source];
+                        const curSource = this.getSource();
                         if (!curSource) {
                             console.log("No sources for Media #" + this.id + " - " + this.fileName);
                             return this.setStatus(MediaStatus.FINISHED);
@@ -383,9 +388,16 @@ class Media {
         }
         const sresolver = facets_1.getFacetById("streamresolver", stream.facetId);
         const task = this.getTask();
-        const out = new MediaStream(this);
+        const out = this.bufferStream = new MediaStream(this);
         if (!this.outStream) {
-            this.outStream = fs.createWriteStream(task.dlDir + path.sep + this.fileName);
+            this.outStream = fs.createWriteStream(task.dlDir + path.sep + this.fileName, {
+                flags: "a",
+                encoding: "binary",
+            });
+        }
+        if (this.emptyStreamData) {
+            this.streamData = sresolver.streamData || {};
+            this.emptyStreamData = false;
         }
         this.lastUpdate = Date.now();
         this.request = sresolver.resolve(stream.url, this.bytes, out, null, stream.options || {});
@@ -403,10 +415,21 @@ class MediaStream extends stream_1.Writable {
     constructor(media) {
         super({});
         this.media = media;
+        this.finished = false;
         this.mediaAttempt = media.totalAttempts;
     }
     setSize(size) {
         this.media.size = size;
+    setStreamData(data) {
+        if (this.mediaAttempt === this.media.totalAttempts && utils_1.type(data) === "object") {
+            this.media.streamData = data;
+        }
+    }
+    getStreamData() {
+        return this.media.streamData;
+    }
+    getAccumBytes() {
+        return this.media.bytes;
     }
     error(err) {
         this.end();
@@ -421,6 +444,7 @@ class MediaStream extends stream_1.Writable {
     _final(callback) {
         // TODO: Wrap up things with our Media
         callback();
+        this.finished = true;
     }
 }
 exports.MediaStream = MediaStream;

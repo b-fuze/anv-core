@@ -117,18 +117,19 @@ export function clock() {
 
             media.speed = Math.floor((1000 / dur) * bytes);
 
-            if (media.bytes === media.size) {
-                media.request = null;
-                media.setStatus(MediaStatus.FINISHED);
-                media.outStream.write(bufferConcat(media.buffers));
+            // TODO: Check if the stream's size actually satifies the set size
+            if (media.bufferStream.finished) {
+              media.request = null;
+              media.setStatus(MediaStatus.FINISHED);
+              media.outStream.write(bufferConcat(media.buffers));
 
-                media.buffers = [];
-                media.bufferedBytes = 0;
-                media.outStream.end();
+              media.buffers = [];
+              media.bufferedBytes = 0;
+              media.outStream.end();
 
-                // FIXME: Tidy this up
-                const stream = media.getSource();
-                media.decreaseMirrorConn(stream);
+              // FIXME: Tidy this up
+              const stream = media.getSource();
+              media.decreaseMirrorConn(stream);
             } else {
               media.outStream.write(bufferConcat(media.buffers));
               media.bytes += bytes;

@@ -102,7 +102,8 @@ function clock() {
                         const dur = now - media.lastUpdate;
                         const bytes = media.bufferedBytes;
                         media.speed = Math.floor((1000 / dur) * bytes);
-                        if (media.bytes === media.size) {
+                        // TODO: Check if the stream's size actually satifies the set size
+                        if (media.bufferStream.finished) {
                             media.request = null;
                             media.setStatus(tasks_1.MediaStatus.FINISHED);
                             media.outStream.write(utils_1.bufferConcat(media.buffers));
