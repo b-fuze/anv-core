@@ -81,6 +81,23 @@ instructions.load(taskUrl, (err, taskId) => {
     task.on("load", load => {
       // Start task
       task.active = true;
+
+fs.readdir(state.task.dlPath, (err, files) => {
+  for (const file of files) {
+    const localPath = state.task.dlPath + path.sep + file;
+
+    instructions.loadLocal(localPath, false, (err, taskId) => {
+      if (err) {
+        console.log("Error loading local task - " + localPath);
+      } else {
+        const task = crud.getTask(taskId);
+
+        console.log("Successfully loaded task - " + taskId);
+        console.dir(task, {depth: null, color: true});
+
+        // Start task
+        task.active = true;
+      }
     });
   }
 });
