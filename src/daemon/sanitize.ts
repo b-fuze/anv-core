@@ -59,15 +59,31 @@ export function validStructure(input: any, output: any, structure: any) {
           }
           // Check function argument count
           else if (inValueType === "function") {
-            const arity = +(valueTypes[inValueTypeIndex][1]);
+            const arityBase = (valueTypes[inValueTypeIndex][1]);
+            let arity: number[] = [];
 
-            if (isNaN(arity)) {
+            if (arityBase) {
+              arity = arityBase.split(/,/g).map(n => +n);
+            }
+
+            if (!arity.length) {
               output[key] = inValue;
             } else {
-              if (inValue.length === arity) {
+              let validArity = false;
+
+              arityLoop:
+              for (const arityLength of arity) {
+                if (inValue.length === arityLength) {
+                  validArity = true;
+
+                  break arityLoop;
+                }
+              }
+
+              if (validArity) {
                 output[key] = inValue;
               } else {
-                errors.push(`Wrong number of arguments for function "${ key }", should be "${ arity }"`);
+                errors.push(`Wrong number of arguments for function "${ key }", should be "${ arityBase }"`);
                 continue structKeyLoop;
               }
             }
@@ -197,7 +213,7 @@ export class sanitize {
       name: [true, "string"],
       description: [false, "string", null],
       weight: [false, "number", 0],
-      resolve: [true, "function:2"],
+      resolve: [true, "function:2,3"],
     });
 
     validationErrors = validationErrors.concat(errors);
