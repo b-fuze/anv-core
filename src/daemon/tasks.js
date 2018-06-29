@@ -19,6 +19,8 @@ const state_1 = require("./state");
 const queue_1 = require("./queue");
 const utils_2 = require("./utils");
 const tasks = [null];
+// DEBUG
+global.ANV.tasks = tasks;
 exports.crud = class {
     static getTask(id) {
         return tasks[id] || null;

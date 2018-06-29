@@ -23,6 +23,9 @@ import {deepCopy} from "./utils";
 
 const tasks: Task[] = [null];
 
+// DEBUG
+(<any> global).ANV.tasks = tasks;
+
 export const crud = class {
   static getTask(id: number) {
     return tasks[id] || null;
