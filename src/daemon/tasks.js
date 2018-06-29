@@ -421,7 +421,10 @@ class MediaStream extends stream_1.Writable {
         this.mediaAttempt = media.totalAttempts;
     }
     setSize(size) {
-        this.media.size = size;
+        if (this.mediaAttempt === this.media.totalAttempts && !this.media.size) {
+            this.media.size = size;
+        }
+    }
     setStreamData(data) {
         if (this.mediaAttempt === this.media.totalAttempts && utils_1.type(data) === "object") {
             this.media.streamData = data;
@@ -434,12 +437,16 @@ class MediaStream extends stream_1.Writable {
         return this.media.bytes;
     }
     error(err) {
-        this.end();
-        this.media.reattemptSources();
+        if (this.mediaAttempt === this.media.totalAttempts) {
+            this.end();
+            this.media.reattemptSources();
+        }
     }
     _write(chunk, encoding, callback) {
-        this.media.buffers.push(chunk);
-        this.media.bufferedBytes += chunk.length;
+        if (this.mediaAttempt === this.media.totalAttempts) {
+            this.media.buffers.push(chunk);
+            this.media.bufferedBytes += chunk.length;
+        }
         // FIXME: Maybe some checks here, maybe not
         callback();
     }
