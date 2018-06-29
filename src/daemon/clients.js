@@ -104,7 +104,30 @@ exports.instructions = {
     },
     start(taskId) {
     },
-    stop(taskId) {
+    stop(taskId, done) {
+        const task = tasks_1.crud.getTask(taskId);
+        let finished = 0;
+        if (task) {
+            task.active = false;
+            for (const media of task.list) {
+                if (media.status === tasks_1.MediaStatus.ACTIVE) {
+                    media.setStatus(tasks_1.MediaStatus.PAUSED);
+                    media.request.stop();
+                    media.outStream.write(utils_1.bufferConcat(media.buffers));
+                    media.outStream.end(() => {
+                        finished++;
+                        if (finished === 2) {
+                            done(null);
+                        }
+                    });
+                    media.bytes += media.bufferedBytes;
+                    media.buffers = [];
+                    media.bufferedBytes = 0;
+                    const stream = media.getSource();
+                    media.decreaseMirrorConn(stream);
+                }
+            }
+        }
     },
     // FIXME: mediaList type
     delete(taskId, mediaList) {

@@ -2,12 +2,15 @@ import * as fs from "fs";
 import * as path from "path";
 import {parse as parseUrl} from "url";
 import {getPadding} from "./utils";
+import {getPadding, bufferConcat} from "./utils";
 import {state} from "./state";
 import {getFacet, getFacetByHost} from "./facets";
 import {queueAdd} from "./queue";
 import {
+  crud,
   Task,
   Media,
+  MediaStatus,
   MediaSourceStream,
   MediaSourceMirror,
   MediaSourceDirect,
@@ -113,8 +116,36 @@ export const instructions = {
 
   },
 
-  stop(taskId: number) {
+  stop(taskId: number, done: (err: string) => void) {
+    const task = crud.getTask(taskId);
+    let finished = 0;
 
+    if (task) {
+      task.active = false;
+
+      for (const media of task.list) {
+        if (media.status === MediaStatus.ACTIVE) {
+          media.setStatus(MediaStatus.PAUSED);
+          media.request.stop();
+          media.outStream.write(bufferConcat(media.buffers));
+          media.outStream.end(() => {
+            finished++;
+
+            if (finished === 2) {
+              done(null);
+            }
+          });
+
+          media.bytes += media.bufferedBytes;
+          media.buffers = [];
+          media.bufferedBytes = 0;
+
+          const stream = media.getSource();
+          media.decreaseMirrorConn(stream);
+        }
+      }
+
+    }
   },
 
   // FIXME: mediaList type
