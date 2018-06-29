@@ -252,7 +252,7 @@ class Media {
 
     const source = this.getSource();
 
-    if (this.queueId === null) {
+    if (this.queueId === null && this.status !== MediaStatus.PAUSED) {
       this.addQueue(source);
     } else {
       this.setStatus(MediaStatus.ACTIVE);

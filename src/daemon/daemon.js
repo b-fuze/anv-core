@@ -10,6 +10,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const minimist_1 = __importDefault(require("minimist"));
 const state_1 = require("./state");
@@ -141,3 +142,21 @@ mainClock.event.on("tick", intervals => {
     }
 });
 console.log("DEBUG", global.ANV);
+process.on("SIGINT", () => {
+    console.log("");
+    const tasks = tasks_1.crud.getTasks();
+    let cancel = tasks.length;
+    let canceled = 0;
+    for (const task of tasks) {
+        clients_1.instructions.stop(task.id, err => {
+            canceled++;
+            if (canceled === cancel) {
+                process.nextTick(() => {
+                    process.exit();
+                });
+            }
+        });
+        console.log("Stopped task #" + task.id + " - " + task.title);
+    }
+    mainClock.stop();
+});

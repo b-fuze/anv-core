@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import * as path from "path";
 import minimist from "minimist";
 import {state} from "./state";
@@ -154,3 +155,25 @@ mainClock.event.on("tick", intervals => {
 });
 
 console.log("DEBUG", (<any> global).ANV);
+
+process.on("SIGINT", () => {
+  console.log("");
+  const tasks = crud.getTasks();
+  let cancel = tasks.length;
+  let canceled = 0;
+
+  for (const task of tasks) {
+    instructions.stop(task.id, err => {
+      canceled++;
+
+      if (canceled === cancel) {
+        process.nextTick(() => {
+          process.exit();
+        });
+      }
+    });
+    console.log("Stopped task #" + task.id + " - " + task.title);
+  }
+
+  mainClock.stop();
+});

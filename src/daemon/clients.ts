@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import {parse as parseUrl} from "url";
-import {getPadding} from "./utils";
+import {jSh} from "jshorts";
 import {getPadding, bufferConcat} from "./utils";
 import {state} from "./state";
 import {getFacet, getFacetByHost} from "./facets";
@@ -18,6 +18,7 @@ import {
   getInitials,
 } from "./tasks";
 import {resolveProvider} from "./resolve";
+import {validate, serialize, deserialize, MediaSerialized, MediaSourceSerialized} from "./serialize";
 
 export enum Instruction {
   Load = "load",
@@ -108,6 +109,79 @@ export const instructions = {
     }
   },
 
+  loadLocal(localPath: string, verified = false, done: (err: string, taskId: number) => void) {
+    // FIXME: Flatten this with promises
+    const anvPath = localPath + path.sep + ".anv";
+    const metaPath = anvPath + path.sep + "meta";
+
+    function load(localPath: string) {
+      fs.readFile(metaPath, {encoding: "utf8"}, (err, metadata) => {
+        const rawTask = jSh.parseJSON(metadata);
+
+        if (rawTask && !rawTask.error) {
+          const task = validate.task(rawTask);
+
+          if (task) {
+            // We have a valid task
+            let validData = true;
+            let media: MediaSerialized[] = [];
+            let mediaSources: MediaSourceSerialized[] = [];
+
+            for (const rawMedia of task.media) {
+              const verified = validate.media(rawMedia);
+
+              if (verified) {
+                media.push(verified);
+              } else {
+                validData = false;
+                break;
+              }
+            }
+
+            // FIXME: Use better error mechanisms
+            if (!validData) {
+              return false;
+            }
+
+            for (const rawMediaSource of task.mediaSources) {
+              const verified = validate.mediaSource(rawMediaSource);
+
+              if (verified) {
+                mediaSources.push(verified);
+              } else {
+                validData = false;
+                break;
+              }
+            }
+
+            if (!validData) {
+              return false;
+            }
+
+            // Deserialize
+            const readyTask = deserialize(task, media, mediaSources);
+            readyTask.task.metaFile = metaPath;
+            readyTask.task.dlDir = readyTask.task.settings.dlPath + path.sep + getSimpleName(readyTask.task.title);
+
+            // FIXME: Remove reduadant object wrapper
+            done(null, readyTask.task.id);
+          }
+        }
+      });
+    }
+
+    if (verified) {
+      load(localPath);
+    } else {
+      fs.stat(metaPath, (err, stat) => {
+        if (!err && stat.isFile()) {
+          console.log("Loading: " + localPath);
+          load(localPath);
+        }
+      });
+    }
+  },
+
   select(taskId: number) {
 
   },
@@ -145,6 +219,19 @@ export const instructions = {
         }
       }
 
+      // Serialize
+      const serialized = serialize(task);
+      fs.writeFile(task.metaFile, JSON.stringify(serialized), err => {
+        if (err) {
+          console.log("ANV: Error writing task metadata for #" + task.id + " - " + task.title + "\n" + err);
+        } else {
+          finished++;
+
+          if (finished === 2) {
+            done(null);
+          }
+        }
+      });
     }
   },
 

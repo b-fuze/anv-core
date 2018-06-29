@@ -1,5 +1,15 @@
 import {type} from "./utils";
-import {Task, MediaStatus, MediaSourceType} from "./tasks";
+import {
+  Task,
+  Media,
+  MediaSource,
+  MediaSourceDirect,
+  MediaSourceMirror,
+  MediaSourceStream,
+  MediaStatus,
+  MediaSourceType,
+  mediaSources,
+} from "./tasks";
 
 export interface TaskSerialized {
   url: string;
@@ -22,8 +32,11 @@ export interface MediaSerialized {
   status: MediaStatus;
   bytes: number;
   size: number;
+  totalAttempts: number;
   sources: number[];
   source: number;
+  streamData: Media["streamData"];
+  emptyStreamData: boolean;
 }
 
 export interface MediaSourceSerialized {
@@ -31,6 +44,7 @@ export interface MediaSourceSerialized {
   type: MediaSourceType;
   facet: string;
   facetId: string;
+  facetType: string;
   url: string;
   parent: number;
   parentType: MediaSourceType;
@@ -64,9 +78,12 @@ const mediaShape = {
   selected: "!boolean",
   status: ["IDLE", "ACTIVE", "PENDING", "PAUSED", "FINISHED"],
   bytes: "!number",
-  size: "!number",
+  size: "number",
+  totalAttempts: "!number",
   sources: "!array:number",
   source: "!number",
+  streamData: "!object",
+  emptyStreamData: "!boolean",
 };
 
 const mediaSourceShape = {
@@ -74,6 +91,7 @@ const mediaSourceShape = {
   type: [null, "direct", "mirror", "stream"],
   facet: "!string",
   facetId: "!string",
+  facetType: "!string",
   url: "string",
   parent: "number",
   parentType: [null, "direct", "mirror", "stream"],
@@ -89,15 +107,36 @@ const mediaSourceShapeCache = buildShapeCache(mediaSourceShape);
 
 export class validate {
   static task(task: any): TaskSerialized {
-    return validateShapeCache(task, taskShapeCache) ? task : null;
+    const err: string[] = [];
+    const valid = validateShapeCache(task, taskShapeCache, err) ? task : null;
+
+    if (err.length) {
+      console.log("ANV Corrupt Metadata:\n - " + err.join("\n - "));
+    }
+
+    return valid ? task : null;
   }
 
   static media(media: any): MediaSerialized {
-    return validateShapeCache(media, mediaShapeCache) ? media : null;
+    const err: string[] = [];
+    const valid = validateShapeCache(media, mediaShapeCache, err) ? media : null;
+
+    if (err.length) {
+      console.log("ANV Corrupt Metadata:\n - " + err.join("\n - "));
+    }
+
+    return valid ? media : null;
   }
 
   static mediaSource(mediaSource: any): MediaSourceSerialized {
-    return validateShapeCache(mediaSource, mediaSourceShapeCache) ? mediaSource : null;
+    const err: string[] = [];
+    const valid = validateShapeCache(mediaSource, mediaSourceShapeCache, err) ? mediaSource : null;
+
+    if (err.length) {
+      console.log("ANV Corrupt Metadata:\n - " + err.join("\n - "));
+    }
+
+    return valid ? mediaSource : null;
   }
 }
 
@@ -144,6 +183,79 @@ export function serialize(task: Task) {
   sTask.mediaSources = sMediaSources;
 
   return sTask;
+}
+
+export interface DeserializedTask {
+  task: Task;
+  mediaSources: MediaSource[];
+}
+
+export function deserialize(taskSrc: TaskSerialized, mediaList: MediaSerialized[], mediaSourcesList: MediaSourceSerialized[]): DeserializedTask {
+  const task = new Task(taskSrc.url, [], taskSrc.providerId, taskSrc.provider);
+
+  // Copy props
+  task.title = taskSrc.title;
+  task.cover = taskSrc.cover;
+  task.active = taskSrc.active;
+  task.settings = taskSrc.settings;
+
+  const mediaSourcesMap: {
+    [id: string]: MediaSource;
+  } = {};
+
+  const mediaSourcesDeserialized: MediaSource[] = [];
+  const mediaSourceIdBaseOffset = mediaSources.length;
+
+  for (const sourceSrc of mediaSourcesList) {
+    let box: MediaSource;
+
+    switch (sourceSrc.type) {
+      case MediaSourceType.Direct:
+        box = new MediaSourceDirect(sourceSrc.url, sourceSrc.facet, sourceSrc.facetId);
+        break;
+      case MediaSourceType.Mirror:
+        box = new MediaSourceMirror(sourceSrc.url, sourceSrc.facet, sourceSrc.facetId);
+        break;
+      case MediaSourceType.Stream:
+        box = new MediaSourceStream(sourceSrc.url, sourceSrc.facet, sourceSrc.facetId);
+        break;
+    }
+
+    // Copy props
+    box.facetType = sourceSrc.facetType;
+    box.parent = sourceSrc.parent === null ? null : sourceSrc.parent + mediaSourceIdBaseOffset;
+    box.parentType = sourceSrc.parentType;
+    box.resolved = sourceSrc.resolved;
+    box.options = sourceSrc.options;
+
+    mediaSourcesMap[sourceSrc.id] = box;
+    mediaSourcesDeserialized.push(box);
+  }
+
+  for (const mediaSrc of mediaList) {
+    const media = new Media(mediaSrc.title, mediaSrc.fileName, task.list, task.id);
+
+    // Copy props
+    media.selected = mediaSrc.selected;
+    media.status = mediaSrc.status;
+    media.bytes = mediaSrc.bytes;
+    media.size = mediaSrc.size;
+    media.totalAttempts = mediaSrc.totalAttempts;
+    media.source = mediaSrc.source;
+    media.streamData = mediaSrc.streamData;
+    media.emptyStreamData = mediaSrc.emptyStreamData;
+
+    for (const source of mediaSrc.sources) {
+      media.sources.push(mediaSourcesMap[source]);
+    }
+
+    task.list.push(media);
+  }
+
+  return {
+    task,
+    mediaSources: mediaSourcesDeserialized,
+  };
 }
 
 type ShapeCache = [string, ShapeType, string | ((value: any) => boolean), boolean][];
@@ -193,7 +305,7 @@ function buildShapeCache(shape: any): ShapeCache {
   return <ShapeCache> cache;
 }
 
-function validateShapeCache(data: any, shape: ShapeCache): boolean {
+function validateShapeCache(data: any, shape: ShapeCache, errors: string[]): boolean {
   for (const [key, shapeType, valueType, required] of shape) {
     const dataValue = data[key];
     const dataValueType = type(dataValue);
@@ -202,7 +314,8 @@ function validateShapeCache(data: any, shape: ShapeCache): boolean {
     switch (shapeType) {
       case ShapeType.BASIC:
         if (required && (dataValue === null || dataValue === undefined)
-            || !required && dataValueType !== valueType) {
+            || !required && dataValueType !== valueType && dataValue !== null) {
+          errors.push(`Wrong basic data type for "${ key }", is "${ dataValueType }" should be "${ valueType }"`);
           return false;
         }
         break;
@@ -210,6 +323,7 @@ function validateShapeCache(data: any, shape: ShapeCache): boolean {
       case ShapeType.ARRAY:
         if (dataValueType !== "array"
             || valueType && !(<any[]> dataValue).every(item => type(item) === valueType)) {
+          errors.push(`Wrong array items types for "${ key }", should be "${ valueType }"`);
           return false;
         }
         break;
@@ -219,19 +333,21 @@ function validateShapeCache(data: any, shape: ShapeCache): boolean {
 
         typeLoop:
         for (const value of <any[]>(<any> valueType)) {
-          if (dataValue === valueType) {
+          if (dataValue === value) {
             valid = true;
             break typeLoop;
           }
         }
 
         if (!valid) {
+          errors.push(`Wrong select data type for "${ key }", is "${ dataValue }" should be "${ (<any> valueType).join(", ") }"`);
           return false;
         }
         break;
 
       case ShapeType.CUSTOM:
         if (!(<any> valueType)(dataValue)) {
+          errors.push(`Wrong custom data type for "${ key }", is "${ dataValueType }"`);
           return false;
         }
         break;

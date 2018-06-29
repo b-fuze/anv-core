@@ -10,11 +10,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const url_1 = require("url");
+const jshorts_1 = require("jshorts");
 const utils_1 = require("./utils");
 const facets_1 = require("./facets");
 const queue_1 = require("./queue");
 const tasks_1 = require("./tasks");
 const resolve_1 = require("./resolve");
+const serialize_1 = require("./serialize");
 var Instruction;
 (function (Instruction) {
     Instruction["Load"] = "load";
@@ -100,6 +102,69 @@ exports.instructions = {
             done("Invalid url", null);
         }
     },
+    loadLocal(localPath, verified = false, done) {
+        // FIXME: Flatten this with promises
+        const anvPath = localPath + path.sep + ".anv";
+        const metaPath = anvPath + path.sep + "meta";
+        function load(localPath) {
+            fs.readFile(metaPath, { encoding: "utf8" }, (err, metadata) => {
+                const rawTask = jshorts_1.jSh.parseJSON(metadata);
+                if (rawTask && !rawTask.error) {
+                    const task = serialize_1.validate.task(rawTask);
+                    if (task) {
+                        // We have a valid task
+                        let validData = true;
+                        let media = [];
+                        let mediaSources = [];
+                        for (const rawMedia of task.media) {
+                            const verified = serialize_1.validate.media(rawMedia);
+                            if (verified) {
+                                media.push(verified);
+                            }
+                            else {
+                                validData = false;
+                                break;
+                            }
+                        }
+                        // FIXME: Use better error mechanisms
+                        if (!validData) {
+                            return false;
+                        }
+                        for (const rawMediaSource of task.mediaSources) {
+                            const verified = serialize_1.validate.mediaSource(rawMediaSource);
+                            if (verified) {
+                                mediaSources.push(verified);
+                            }
+                            else {
+                                validData = false;
+                                break;
+                            }
+                        }
+                        if (!validData) {
+                            return false;
+                        }
+                        // Deserialize
+                        const readyTask = serialize_1.deserialize(task, media, mediaSources);
+                        readyTask.task.metaFile = metaPath;
+                        readyTask.task.dlDir = readyTask.task.settings.dlPath + path.sep + tasks_1.getSimpleName(readyTask.task.title);
+                        // FIXME: Remove reduadant object wrapper
+                        done(null, readyTask.task.id);
+                    }
+                }
+            });
+        }
+        if (verified) {
+            load(localPath);
+        }
+        else {
+            fs.stat(metaPath, (err, stat) => {
+                if (!err && stat.isFile()) {
+                    console.log("Loading: " + localPath);
+                    load(localPath);
+                }
+            });
+        }
+    },
     select(taskId) {
     },
     start(taskId) {
@@ -127,6 +192,19 @@ exports.instructions = {
                     media.decreaseMirrorConn(stream);
                 }
             }
+            // Serialize
+            const serialized = serialize_1.serialize(task);
+            fs.writeFile(task.metaFile, JSON.stringify(serialized), err => {
+                if (err) {
+                    console.log("ANV: Error writing task metadata for #" + task.id + " - " + task.title + "\n" + err);
+                }
+                else {
+                    finished++;
+                    if (finished === 2) {
+                        done(null);
+                    }
+                }
+            });
         }
     },
     // FIXME: mediaList type
