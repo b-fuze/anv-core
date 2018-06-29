@@ -113,17 +113,31 @@ export const facetTiers = {
 
 export interface FacetHostMap {
   mirror: {
-    [host: string]: string;
+    string: {
+      [host: string]: string;
+    },
+
+    regex: [RegExp, string][];
   }
 
   provider: {
-    [host: string]: string;
+    string: {
+      [host: string]: string;
+    },
+
+    regex: [RegExp, string][];
   }
 }
 
 export const facetHostMap: FacetHostMap = {
-  mirror: {},
-  provider: {},
+  mirror: {
+    string: {},
+    regex: [],
+  },
+  provider: {
+    string: {},
+    regex: [],
+  },
 }
 
 export function registerFacet<K extends keyof FacetMap>(facet: K, facetId: string, facetData: FacetMap[K]): void {
@@ -150,8 +164,14 @@ export function registerFacet<K extends keyof FacetMap>(facet: K, facetId: strin
     (<any>state.task.tiers)[facet][facetData.name] = curFacetTiers;
     (<any>defaultState.task.tiers)[facet][facetData.name] = curFacetTiers;
 
-    for (const host of (<any>facetData).hosts as string[]) {
-      (<any>facetHostMap)[facet][host] = facetData.name;
+    const facetHostBase: FacetHostMap["mirror"] = (<any>facetHostMap)[facet];
+
+    for (const host of (<any>facetData).hosts as (RegExp | string)[]) {
+      if (typeof host === "string") {
+        facetHostBase.string[host] = facetData.name;
+      } else {
+        facetHostBase.regex.push([host, facetData.facetId]);
+      }
     }
   }
 }
@@ -171,9 +191,18 @@ export function getFacetByHost<K extends keyof FacetMap>(facet: K, url: string):
     return null;
   }
 
-  const facetName: string = (<any>facetHostMap)[facet][parsed.host];
+  const facetBase: FacetHostMap["mirror"] = (<any>facetHostMap)[facet];
+  const facetName: string = facetBase.string[parsed.host];
 
   if (!facetName) {
+    // Try to get it by regex
+    for (const [regex, facetId] of facetBase.regex) {
+      if (regex.test(parsed.host)) {
+        // FIXME: Test for others too
+        return getFacetById(facet, facetId);
+      }
+    }
+
     return null;
   }
 

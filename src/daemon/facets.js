@@ -34,8 +34,14 @@ exports.facetTiers = {
     provider: {},
 };
 exports.facetHostMap = {
-    mirror: {},
-    provider: {},
+    mirror: {
+        string: {},
+        regex: [],
+    },
+    provider: {
+        string: {},
+        regex: [],
+    },
 };
 function registerFacet(facet, facetId, facetData) {
     if (!exports.facetStore[facet][facetData.name]) {
@@ -56,8 +62,14 @@ function registerFacet(facet, facetId, facetData) {
         exports.facetTiers[facet][facetId] = curFacetTiers;
         state_1.state.task.tiers[facet][facetData.name] = curFacetTiers;
         state_1.defaultState.task.tiers[facet][facetData.name] = curFacetTiers;
+        const facetHostBase = exports.facetHostMap[facet];
         for (const host of facetData.hosts) {
-            exports.facetHostMap[facet][host] = facetData.name;
+            if (typeof host === "string") {
+                facetHostBase.string[host] = facetData.name;
+            }
+            else {
+                facetHostBase.regex.push([host, facetData.facetId]);
+            }
         }
     }
 }
@@ -75,8 +87,16 @@ function getFacetByHost(facet, url) {
     if (!parsed.host) {
         return null;
     }
-    const facetName = exports.facetHostMap[facet][parsed.host];
+    const facetBase = exports.facetHostMap[facet];
+    const facetName = facetBase.string[parsed.host];
     if (!facetName) {
+        // Try to get it by regex
+        for (const [regex, facetId] of facetBase.regex) {
+            if (regex.test(parsed.host)) {
+                // FIXME: Test for others too
+                return getFacetById(facet, facetId);
+            }
+        }
         return null;
     }
     return getFacet(facet, facetName);

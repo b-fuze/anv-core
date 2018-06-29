@@ -125,13 +125,20 @@ class sanitize {
                     mediaList: "basic",
                     mediaSource: "basic",
                 }],
-            hosts: [true, "array:string"],
+            hosts: [true, "array"],
             validUrl: [true, "function:2"],
             tiers: [false, "array", []],
             mediaList: [true, "function:1"],
             mediaSource: [false, "function:2"],
             search: [false, "function:1"],
         });
+        if (Array.isArray(output.hosts)) {
+            for (const host of output.hosts) {
+                if (typeof host !== "string" && !(host instanceof RegExp)) {
+                    errors.push(`Wrong item types in array "host", should be "string" or "array"`);
+                }
+            }
+        }
         if (Array.isArray(output.tiers)) {
             for (const tier of output.tiers) {
                 if (!Array.isArray(tier) || tier.length !== 2 || (typeof tier[0] !== "string" || typeof tier[1] !== "string")) {
@@ -162,11 +169,18 @@ class sanitize {
                     noCheckCertificate: [false, "boolean", false]
                 }, {}],
             streamResolver: [false, "string", "basic"],
-            hosts: [true, "array:string"],
+            hosts: [true, "array"],
             validUrl: [true, "function:1"],
             tiers: [false, "array", []],
             media: [true, "function:3"],
         });
+        if (Array.isArray(output.hosts)) {
+            for (const host of output.hosts) {
+                if (typeof host !== "string" && !(host instanceof RegExp)) {
+                    errors.push(`Wrong item types in array "host", should be "string" or "array"`);
+                }
+            }
+        }
         validationErrors = validationErrors.concat(errors);
         return {
             errors: validationErrors,
