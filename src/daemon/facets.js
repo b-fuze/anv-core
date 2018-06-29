@@ -21,6 +21,7 @@ exports.facetIdMap = {
     genericresolver: {},
     streamresolver: {},
 };
+global.ANV.facetStore = exports.facetStore;
 exports.facetStateIdMap = {
     provider: {},
     mirror: {},

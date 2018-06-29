@@ -20,6 +20,9 @@ const queue = {
     provider: {},
     mirrorstream: {}
 };
+// DEBUG
+;
+global.ANV.queue = queue;
 function queueAdd(facet, facetId, callback, id = null) {
     const facetMap = queue[facet];
     let facetQueue = facetMap[facetId];

@@ -37,3 +37,8 @@ export const defaultState = deepCopy(state);
 export const tmpState = {
   currentDl: 0,
 }
+
+// DEBUG
+;(<any> global).ANV = {
+  tmpState,
+};

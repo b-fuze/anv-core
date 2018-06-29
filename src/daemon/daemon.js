@@ -140,3 +140,4 @@ mainClock.event.on("tick", intervals => {
         }
     }
 });
+console.log("DEBUG", global.ANV);

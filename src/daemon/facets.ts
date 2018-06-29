@@ -72,6 +72,9 @@ export const facetIdMap: FacetIdMap = {
   streamresolver: {},
 }
 
+// DEBUG
+;(<any> global).ANV.facetStore = facetStore;
+
 // Facet state
 
 export interface FacetStateIdMap {

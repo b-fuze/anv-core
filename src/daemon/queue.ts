@@ -43,6 +43,9 @@ const queue: Queue = {
   mirrorstream: {}
 };
 
+// DEBUG
+;(<any> global).ANV.queue = queue;
+
 export function queueAdd(facet: keyof QueueFacet, facetId: string, callback: () => void, id: number = null) {
   const facetMap = queue[facet];
   let facetQueue = facetMap[facetId];

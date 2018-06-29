@@ -34,3 +34,6 @@ exports.defaultState = utils_1.deepCopy(exports.state);
 exports.tmpState = {
     currentDl: 0,
 };
+global.ANV = {
+    tmpState: exports.tmpState,
+};
