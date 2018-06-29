@@ -1,6 +1,8 @@
 // @ts-check
 const cflare = require("cloudscraper");
-const {register} = require("anv");
+const {register, genericResolver} = require("anv");
+const {JSDOM} = require("jsdom");
+const {jSh} = require("jshorts");
 
 register("genericresolver", {
   name: "cloudflare",
@@ -14,5 +16,23 @@ register("genericresolver", {
         done(null, body);
       }
     })
+  }
+});
+
+register("genericresolver", {
+  name: "cfdom",
+  description: "ANV Cloudflare request resolver",
+  weight: 0,
+  resolve(url, done) {
+    genericResolver("cloudflare", url, (err, data) => {
+      // @ts-ignore
+      const dom = new JSDOM(data);
+      const boundjSh = jSh.bind(dom.window.document);
+      boundjSh.dom = dom;
+      boundjSh.html = data;
+      boundjSh.url = url;
+
+      done(null, boundjSh);
+    });
   }
 });
