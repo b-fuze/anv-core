@@ -31,7 +31,8 @@ register("provider", {
     }
   },
   tiers: [
-    ["vidstreaming", "vidstreaming"],
+    ["mp4upload", "MP4Upload"],
+    ["vidstreaming", "VidStreaming"],
   ],
   mediaList(jSh) {
     const title = jSh(".anime_info_body_bg h1")[0].textContent;
@@ -100,16 +101,16 @@ register("provider", {
     });
   },
   mediaSource(jSh, direct) {
-    const mirrors = jSh(".anime_muti_link .anime > a");
+    const mirrors = jSh(".anime_muti_link li > a");
     const sources = [];
 
     for (const mirror of mirrors) {
       const name = mirror.childNodes[0].wholeText.trim().toLowerCase();
 
-      if (/vidstreaming/.test(name)) {
+      if (/vidstreaming|mp4upload/.test(name)) {
         sources.push({
           type: "mirror",
-          url: "https:" + mirror.getAttribute("data-video"),
+          url: (name[0] === "v" ? "https:" : "") + mirror.getAttribute("data-video"),
           tiers: [name],
         });
       }
