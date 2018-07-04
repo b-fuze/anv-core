@@ -36,6 +36,7 @@ register("provider", {
     }
   },
   tiers: [
+    ["openload", "Openload"],
     ["mp4upload", "MP4Upload"],
     ["vidstreaming", "VidStreaming"],
   ],
@@ -110,9 +111,11 @@ register("provider", {
     const sources = [];
 
     for (const mirror of mirrors) {
-      const name = mirror.childNodes[0].wholeText.trim().toLowerCase();
+      let name = mirror.childNodes[0].wholeText.trim().toLowerCase();
 
-      if (/vidstreaming|mp4upload/.test(name)) {
+      if (/vidstreaming|mp4upload|openupload/.test(name)) {
+        name === "openupload" && (name = "openload");
+
         sources.push({
           type: "mirror",
           url: (name[0] === "v" ? "https:" : "") + mirror.getAttribute("data-video"),
