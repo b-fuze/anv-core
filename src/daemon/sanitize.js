@@ -169,6 +169,8 @@ class sanitize {
                     noCheckCertificate: [false, "boolean", false]
                 }, {}],
             streamResolver: [false, "string", "basic"],
+            forceReresolveParent: [false, "boolean", false],
+            reresolveDelay: [false, "number", 1000 * 60 * 60 /* 1 hour in ms*/],
             hosts: [true, "array"],
             validUrl: [true, "function:1"],
             tiers: [false, "array", []],
