@@ -24,6 +24,7 @@ register("mirror", {
   resolver: "basic",
   streamResolver: "basic",
   hosts: [
+    "www.mp4upload.com",
     "mp4upload.com",
   ],
   validUrl(url) {
