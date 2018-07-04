@@ -26,8 +26,13 @@ register("provider", {
       // https://www2.gogoanime.se/category/boku-no-hero-academia
       return /^https?:\/\/www\d*\.gogoanime\.se\/+category\/+[a-zA-Z\d-]+\/*$/.test(url);
     } else {
+      // Don't match
+      // https://www3.gogoanime.se/anime-list.html
+      // https://www3.gogoanime.se/new-season.html
+      // Etc...
+
       // https://www2.gogoanime.se/boku-no-hero-academia-episode-1
-      return /^https?:\/\/www\d*\.gogoanime\.se\/+[a-zA-Z\d-]+-episode(-\d+(\.\d+)?){1,2}$/.test(url);
+      return /^https?:\/\/www\d*\.gogoanime\.se\/+(?!category\/+|(anime-list|new-season|anime-movies|popular|login|register|search)\.html)[a-zA-Z\d-]+$/.test(url);
     }
   },
   tiers: [
