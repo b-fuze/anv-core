@@ -192,6 +192,7 @@ export const instructions = {
 
   stop(taskId: number, done: (err: string) => void) {
     const task = crud.getTask(taskId);
+    let toComplete = 1;
     let finished = 0;
 
     if (task) {
@@ -205,7 +206,7 @@ export const instructions = {
           media.outStream.end(() => {
             finished++;
 
-            if (finished === 2) {
+            if (finished === toComplete) {
               done(null);
             }
           });
@@ -216,6 +217,8 @@ export const instructions = {
 
           const stream = media.getSource();
           media.decreaseMirrorConn(stream);
+
+          toComplete++;
         }
       }
 
@@ -227,7 +230,7 @@ export const instructions = {
         } else {
           finished++;
 
-          if (finished === 2) {
+          if (finished === toComplete) {
             done(null);
           }
         }

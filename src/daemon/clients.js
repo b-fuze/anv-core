@@ -171,6 +171,7 @@ exports.instructions = {
     },
     stop(taskId, done) {
         const task = tasks_1.crud.getTask(taskId);
+        let toComplete = 1;
         let finished = 0;
         if (task) {
             task.active = false;
@@ -181,7 +182,7 @@ exports.instructions = {
                     media.outStream.write(utils_1.bufferConcat(media.buffers));
                     media.outStream.end(() => {
                         finished++;
-                        if (finished === 2) {
+                        if (finished === toComplete) {
                             done(null);
                         }
                     });
@@ -190,6 +191,7 @@ exports.instructions = {
                     media.bufferedBytes = 0;
                     const stream = media.getSource();
                     media.decreaseMirrorConn(stream);
+                    toComplete++;
                 }
             }
             // Serialize
@@ -200,7 +202,7 @@ exports.instructions = {
                 }
                 else {
                     finished++;
-                    if (finished === 2) {
+                    if (finished === toComplete) {
                         done(null);
                     }
                 }
