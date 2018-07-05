@@ -1,5 +1,5 @@
 // @ts-check
-const {register, genericResolver} = require("anv");
+const {register} = require("anv");
 
 function decode(inputBuf, lkey1, lkey2, lkey3, lkey4, bkey1, bkey2) {
   var output = ""; // string
