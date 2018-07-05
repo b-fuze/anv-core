@@ -51,12 +51,6 @@ function decode(inputBuf, lkey1, lkey2, lkey3, lkey4, bkey1, bkey2) {
     headerKeyIndex += 1; // number
   }
 
-  console.log({
-    // @ts-ignore
-    args: Array.from(arguments),
-    output: output,
-  });
-
   return output;
 }
 
@@ -122,7 +116,6 @@ register("mirror", {
     const stream = decode(encodedData[1], lKeyVal[1], +lKeyVal[2], +lKeyVal[3], +lKeyVal[4], bKeyVal[1], +bKeyVal[2]);
     const streamUrl = "https" + "://openload.co/stream/" + stream + "?mime=true";
 
-    console.log("OPENLOAD", streamUrl);
     return {
       // Example: https://openload.co/stream/y_C_MJz38xI~1530743203~99.62.0.0~TPNcvEA_?mime=true
       url: streamUrl,
