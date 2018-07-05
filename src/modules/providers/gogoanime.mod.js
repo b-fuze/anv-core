@@ -36,6 +36,7 @@ register("provider", {
     }
   },
   tiers: [
+    ["streamango", "Streamango"],
     ["openload", "Openload"],
     ["mp4upload", "MP4Upload"],
     ["vidstreaming", "VidStreaming"],
@@ -113,7 +114,7 @@ register("provider", {
     for (const mirror of mirrors) {
       let name = mirror.childNodes[0].wholeText.trim().toLowerCase();
 
-      if (/vidstreaming|mp4upload|openupload/.test(name)) {
+      if (/vidstreaming|mp4upload|openupload|streamango/.test(name)) {
         name === "openupload" && (name = "openload");
 
         sources.push({
