@@ -56,24 +56,10 @@ function clock() {
                 mediaLoop: for (const media of task.list) {
                     if (media.selected) {
                         if (media.status !== tasks_1.MediaStatus.FINISHED) {
-                            if (media.status !== tasks_1.MediaStatus.ACTIVE) {
-                                let mediaSource = media.getSource();
-                                let mirrorStream = false;
-                                if (mediaSource.type === "stream" && mediaSource.parentType === "mirror") {
-                                    mediaSource = tasks_1.mediaSources[mediaSource.parent];
-                                    mirrorStream = true;
-                                }
-                                const queueFacet = (mirrorStream ? "mirrorstream" : sourceQueueMap[mediaSource.type]);
-                                const queueId = media.queueId;
-                                if (media.status === tasks_1.MediaStatus.PENDING
-                                    && queue_1.queueState(queueFacet, mediaSource.facetId, media.queueId) === queue_1.QueueState.READY
-                                    || !exhuastedConcurrent(task, activeMedia, setActive)
-                                        && media.queueId === null) {
+                            if (media.status === tasks_1.MediaStatus.IDLE || media.status === tasks_1.MediaStatus.PAUSED) {
+                                if (!exhuastedConcurrent(task, activeMedia, setActive)) {
                                     media.start();
                                     setActive++;
-                                    if (queueId !== null) {
-                                        queue_1.advanceQueue(queueFacet, mediaSource.facetId, true, true);
-                                    }
                                     if (!state_1.state.maxGlobalConcurrentDl) {
                                         available--;
                                     }
@@ -94,33 +80,49 @@ function clock() {
             }
             iterations++;
         }
+        // Iterate pending media
+        for (const media of tasks_1.crud.getPendingMedia()) {
+            let mediaSource = media.getSource();
+            let mirrorStream = false;
+            if (mediaSource.type === "stream" && mediaSource.parentType === "mirror") {
+                mediaSource = tasks_1.mediaSources[mediaSource.parent];
+                mirrorStream = true;
+            }
+            const queueFacet = (mirrorStream ? "mirrorstream" : sourceQueueMap[mediaSource.type]);
+            const queueId = media.queueId;
+            if (queue_1.queueState(queueFacet, mediaSource.facetId, media.queueId) === queue_1.QueueState.READY) {
+                // Media is ready in queue
+                media.start();
+                queue_1.advanceQueue(queueFacet, mediaSource.facetId, true, true);
+            }
+        }
         if (intervals[state_1.state.tickDelay]) {
-            for (const task of tasks) {
-                for (const media of task.list) {
-                    if (media.status === tasks_1.MediaStatus.ACTIVE && media.outStream && media.request) {
-                        const now = Date.now();
-                        const dur = now - media.lastUpdate;
-                        const bytes = media.bufferedBytes;
-                        media.speed = Math.floor((1000 / dur) * bytes);
-                        // TODO: Check if the stream's size actually satifies the set size
-                        if (media.bufferStream.finished) {
-                            media.request = null;
-                            media.setStatus(tasks_1.MediaStatus.FINISHED);
-                            media.outStream.write(utils_1.bufferConcat(media.buffers));
-                            media.buffers = [];
-                            media.bufferedBytes = 0;
-                            media.outStream.end();
-                            // FIXME: Tidy this up
-                            const stream = media.getSource();
-                            media.decreaseMirrorConn(stream);
-                        }
-                        else {
-                            media.outStream.write(utils_1.bufferConcat(media.buffers));
-                            media.bytes += bytes;
-                            media.buffers = [];
-                            media.bufferedBytes = 0;
-                            media.lastUpdate = Date.now();
-                        }
+            // Iterate active media
+            for (const media of tasks_1.crud.getActiveMedia()) {
+                if (media.outStream && media.request) {
+                    const now = Date.now();
+                    const dur = now - media.lastUpdate;
+                    const bytes = media.bufferedBytes;
+                    media.speed = Math.floor((1000 / dur) * bytes);
+                    // TODO: Check if the stream's size actually satifies the set size
+                    if (media.bufferStream.finished) {
+                        media.request = null;
+                        media.setStatus(tasks_1.MediaStatus.FINISHED);
+                        media.outStream.write(utils_1.bufferConcat(media.buffers));
+                        media.buffers = [];
+                        media.bufferedBytes = 0;
+                        media.outStream.end();
+                        media.outStream = null;
+                        // FIXME: Tidy this up
+                        const stream = media.getSource();
+                        media.decreaseMirrorConn(stream);
+                    }
+                    else {
+                        media.outStream.write(utils_1.bufferConcat(media.buffers));
+                        media.bytes += bytes;
+                        media.buffers = [];
+                        media.bufferedBytes = 0;
+                        media.lastUpdate = Date.now();
                     }
                 }
             }

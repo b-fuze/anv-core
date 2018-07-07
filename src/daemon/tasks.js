@@ -63,6 +63,13 @@ exports.crud = class {
         return this.hasTaskThen(id, task => {
         });
     }
+    // Media
+    static getActiveMedia() {
+        return exports.mediaByStatus.ACTIVE;
+    }
+    static getPendingMedia() {
+        return exports.mediaByStatus.PENDING;
+    }
 };
 function getSimpleName(title) {
     return title.replace(/[^a-z\d\s\-,:'()@!]/ig, "").replace(/\s+/g, " ");
@@ -111,6 +118,10 @@ class Task extends lces_1.Component {
 }
 exports.Task = Task;
 exports.media = [null];
+exports.mediaByStatus = {
+    ACTIVE: [],
+    PENDING: [],
+};
 var MediaStatus;
 (function (MediaStatus) {
     MediaStatus["IDLE"] = "IDLE";
@@ -171,6 +182,17 @@ class Media {
             if (compare[0] !== compare[1]) {
                 state_1.tmpState.currentDl += compare[1];
                 task.currentDl += compare[1];
+            }
+            const oldStatusArray = exports.mediaByStatus[oldStatus];
+            const newStatusArray = exports.mediaByStatus[status];
+            if (oldStatusArray) {
+                const index = oldStatusArray.indexOf(this);
+                if (index !== -1) {
+                    oldStatusArray.splice(index, 1);
+                }
+            }
+            if (newStatusArray) {
+                newStatusArray.push(this);
             }
         }
     }

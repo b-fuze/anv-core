@@ -78,6 +78,15 @@ export const crud = class {
 
     });
   }
+
+  // Media
+  static getActiveMedia() {
+    return mediaByStatus.ACTIVE;
+  }
+
+  static getPendingMedia() {
+    return mediaByStatus.PENDING;
+  }
 }
 
 export function getSimpleName(title: string) {
@@ -151,6 +160,10 @@ class Task extends Component<StateModel, TaskEvents> {
 }
 
 export const media: Media[] = [null];
+export const mediaByStatus = {
+  ACTIVE: <Media[]> [],
+  PENDING: <Media[]> [],
+};
 
 export enum MediaStatus {
   IDLE = "IDLE",
@@ -238,6 +251,21 @@ class Media {
       if (compare[0] !== compare[1]) {
         tmpState.currentDl += compare[1];
         task.currentDl += compare[1];
+      }
+
+      const oldStatusArray: Media[] = (<any> mediaByStatus)[oldStatus];
+      const newStatusArray: Media[] = (<any> mediaByStatus)[status];
+
+      if (oldStatusArray) {
+        const index = oldStatusArray.indexOf(this);
+
+        if (index !== -1) {
+          oldStatusArray.splice(index, 1);
+        }
+      }
+
+      if (newStatusArray) {
+        newStatusArray.push(this);
       }
     }
   }

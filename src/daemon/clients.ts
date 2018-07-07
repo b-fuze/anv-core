@@ -162,8 +162,9 @@ export const instructions = {
             const readyTask = deserialize(task, media, mediaSources);
             readyTask.task.metaFile = metaPath;
             readyTask.task.dlDir = readyTask.task.settings.dlPath + path.sep + getSimpleName(readyTask.task.title);
+            readyTask.task.loaded = true;
 
-            // FIXME: Remove reduadant object wrapper
+            // FIXME: Remove redundant object wrapper
             done(null, readyTask.task.id);
           }
         }
@@ -192,6 +193,12 @@ export const instructions = {
 
   stop(taskId: number, done: (err: string) => void) {
     const task = crud.getTask(taskId);
+
+    if (!task.loaded) {
+      // There's nothing to stop
+      done(null);
+    }
+
     let toComplete = 1;
     let finished = 0;
 
