@@ -72,7 +72,7 @@ const literalKeyRegex = /\(\s*_0x30725e\s*,\s*\(\s*parseInt\(\s*'(\d+)'\s*,\s*\d
 //         23 - // lkey4
 //         0x8
 //     )
-// )
+// )-
 
 const baseKeyRegex = /var\s+_1x4bfb36\s*=\s*parseInt\(\s*'(\d+)'\s*,\s*\d+\s*\)\s*-\s*(\d+)\s*;/;
 // Example:
@@ -98,10 +98,11 @@ register("mirror", {
   hosts: [
     "openload.co",
     "www.openload.co",
+    "oload.download"
   ],
   validUrl(url) {
     // https://openload.co/embed/y_C_MJz38xI
-    return /^https?:\/\/(www\.)?openload\.co\/+embed\/+[a-zA-Z\d_]+$/.test(url);
+    return /^https?:\/\/(www\.)?(openload\.co|oload\.download)\/+embed\/+[a-zA-Z\d_]+$/.test(url);
   },
   media(data, tier, url) {
     const encodedData = data.match(dataRegex);
