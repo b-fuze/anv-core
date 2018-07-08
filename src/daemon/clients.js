@@ -172,7 +172,7 @@ exports.instructions = {
     },
     stop(taskId, done) {
         const task = tasks_1.crud.getTask(taskId);
-        if (!task.loaded) {
+        if (!(task.loaded && task.metaFile)) {
             // There's nothing to stop
             done(null);
         }
@@ -183,14 +183,19 @@ exports.instructions = {
             for (const media of task.list) {
                 if (media.status === tasks_1.MediaStatus.ACTIVE) {
                     media.setStatus(tasks_1.MediaStatus.PAUSED);
-                    media.request.stop();
-                    media.outStream.write(utils_1.bufferConcat(media.buffers));
-                    media.outStream.end(() => {
-                        finished++;
-                        if (finished === toComplete) {
-                            done(null);
-                        }
-                    });
+                    if (media.request) {
+                        media.request.stop();
+                    }
+                    if (media.outStream) {
+                        media.outStream.write(utils_1.bufferConcat(media.buffers));
+                        media.outStream.end(() => {
+                            finished++;
+                            if (finished === toComplete) {
+                                done(null);
+                            }
+                        });
+                        media.outStream = null;
+                    }
                     media.bytes += media.bufferedBytes;
                     media.buffers = [];
                     media.bufferedBytes = 0;
