@@ -38,8 +38,10 @@ register("provider", {
   tiers: [
     ["streamango", "Streamango"],
     ["openload", "Openload"],
-    ["mp4upload", "MP4Upload"],
     ["vidstreaming", "VidStreaming"],
+    ["yourupload", "YourUpload"],
+    ["mp4upload", "MP4Upload"],
+    ["estream", "EStream"],
   ],
   mediaList(jSh) {
     const title = jSh(".anime_info_body_bg h1")[0].textContent;
@@ -114,7 +116,7 @@ register("provider", {
     for (const mirror of mirrors) {
       let name = mirror.childNodes[0].wholeText.trim().toLowerCase();
 
-      if (/vidstreaming|mp4upload|openupload|streamango/.test(name)) {
+      if (/^(vidstreaming|mp4upload|openupload|streamango|yourupload|estream)$/.test(name)) {
         name === "openupload" && (name = "openload");
 
         sources.push({
