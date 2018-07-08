@@ -119,6 +119,10 @@ exports.instructions = {
                         for (const rawMedia of task.media) {
                             const verified = serialize_1.validate.media(rawMedia);
                             if (verified) {
+                                if (verified.status === tasks_1.MediaStatus.PENDING) {
+                                    // Reset Pending media to Idle
+                                    verified.status = tasks_1.MediaStatus.IDLE;
+                                }
                                 media.push(verified);
                             }
                             else {

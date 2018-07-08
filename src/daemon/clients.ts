@@ -131,6 +131,11 @@ export const instructions = {
               const verified = validate.media(rawMedia);
 
               if (verified) {
+                if (verified.status === MediaStatus.PENDING) {
+                  // Reset Pending media to Idle
+                  verified.status = MediaStatus.IDLE;
+                }
+
                 media.push(verified);
               } else {
                 validData = false;
