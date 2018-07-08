@@ -262,6 +262,10 @@ class Media {
                                     break;
                                 case "mirror":
                                     const mirror = facets_1.getFacetByHost("mirror", resSource.url);
+                                    if (!mirror) {
+                                        console.error("ANV Error: No mirror found for: " + resSource.url);
+                                        return null;
+                                    }
                                     box = new MediaSourceMirror(resSource.url, mirror.name, mirror.facetId);
                                     break;
                                 case "stream":
@@ -273,7 +277,7 @@ class Media {
                             box.parent = source.id;
                             box.parentType = source.type;
                             return box;
-                        });
+                        }).filter(box => box !== null);
                         this.sources.splice.apply(this.sources, [this.source + 1, 0].concat(boxedSources));
                         source.resolved = true;
                         // Reresolve
