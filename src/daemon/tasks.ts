@@ -135,6 +135,7 @@ class Task extends Component<StateModel, TaskEvents> {
   dlDir: string;
   metaFile: string;
   loaded: boolean = false;
+  finishedFromStart = 0; // FIXME: Find a better name
 
   constructor(
     url: string,

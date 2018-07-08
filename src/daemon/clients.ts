@@ -169,6 +169,12 @@ export const instructions = {
             readyTask.task.dlDir = readyTask.task.settings.dlPath + path.sep + getSimpleName(readyTask.task.title);
             readyTask.task.loaded = true;
 
+            for (const media of readyTask.task.list) {
+              if (media.status === MediaStatus.FINISHED) {
+                readyTask.task.finishedFromStart++;
+              }
+            }
+
             // FIXME: Remove redundant object wrapper
             done(null, readyTask.task.id);
           }

@@ -106,6 +106,7 @@ class Task extends lces_1.Component {
         this.currentDl = 0;
         this.settings = utils_2.deepCopy(state_1.state.task);
         this.loaded = false;
+        this.finishedFromStart = 0; // FIXME: Find a better name
         this.url = url;
         this.id = tasks.length;
         tasks.push(this);

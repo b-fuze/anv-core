@@ -152,6 +152,11 @@ exports.instructions = {
                         readyTask.task.metaFile = metaPath;
                         readyTask.task.dlDir = readyTask.task.settings.dlPath + path.sep + tasks_1.getSimpleName(readyTask.task.title);
                         readyTask.task.loaded = true;
+                        for (const media of readyTask.task.list) {
+                            if (media.status === tasks_1.MediaStatus.FINISHED) {
+                                readyTask.task.finishedFromStart++;
+                            }
+                        }
                         // FIXME: Remove redundant object wrapper
                         done(null, readyTask.task.id);
                     }

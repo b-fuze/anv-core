@@ -12,7 +12,7 @@ function taskActiveCount(task: Task) {
 }
 
 function taskFinishedCount(task: Task) {
-  return task.list.filter(m => (m.selected && m.status === MediaStatus.FINISHED)).length;
+  return Math.max(task.list.filter(m => (m.selected && m.status === MediaStatus.FINISHED)).length - task.finishedFromStart, 0);
 }
 
 function getTasksByFairness(tasks: Task[]) {
