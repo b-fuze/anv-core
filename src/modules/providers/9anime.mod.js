@@ -20,7 +20,7 @@ register("provider", {
   validUrl(url, list) {
     if (list) {
       // https://www7.9anime.is/watch/those-who-hunt-elves.5760/6yvnxz
-      return /^https?:\/\/www\d+\.9anime\.is\/+watch\/+[a-zA-Z\d-]+\.\d+(\/+([a-zA-Z\d]+)?)?$/.test(url);
+      return /^https?:\/\/www\d+\.9anime\.is\/+watch\/+[a-zA-Z\d-]+\.[\da-zA-Z]+(\/+([a-zA-Z\d]+)?)?$/.test(url);
     } else {
       return /^https?:\/\/www\d+\.9anime\.is\/+ajax\/+episode\/+info\?.+$/.test(url);
     }
