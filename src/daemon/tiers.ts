@@ -1,4 +1,4 @@
-import {MediaSourceItem} from "anv";
+import {MediaSourceItem, MediaSourceSubItem} from "anv";
 import {FacetTiers} from "./facets";
 
 export interface RankMap {
@@ -34,15 +34,15 @@ export function buildRankMap(tiers: FacetTiers): RankMap {
   return rankMap;
 }
 
-export function rankItems(facet: keyof FacetTiers, facetName: string, items: MediaSourceItem[], tiers: FacetTiers, tierRankMap?: RankMap): MediaSourceItem[] {
+export function rankItems(facet: keyof FacetTiers, facetName: string, items: (MediaSourceItem | MediaSourceSubItem)[], tiers: FacetTiers, tierRankMap?: RankMap): (MediaSourceItem | MediaSourceSubItem)[] {
   if (!tierRankMap) {
     tierRankMap = buildRankMap(tiers);
   }
 
   const copy = items.slice();
   copy.sort((a, b) => {
-    const aRank = a.tiers.reduce((tier1, tier2) => tier1 + tierRankMap[facet][facetName][tier2], 0);
-    const bRank = b.tiers.reduce((tier1, tier2) => tier1 + tierRankMap[facet][facetName][tier2], 0);
+    const aRank = (a.tiers || []).reduce((tier1, tier2) => tier1 + tierRankMap[facet][facetName][tier2], 0);
+    const bRank = (b.tiers || []).reduce((tier1, tier2) => tier1 + tierRankMap[facet][facetName][tier2], 0);
 
     return aRank - bRank;
   });

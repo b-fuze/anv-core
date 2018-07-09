@@ -17,6 +17,7 @@ const queue_1 = require("./queue");
 const tasks_1 = require("./tasks");
 const resolve_1 = require("./resolve");
 const serialize_1 = require("./serialize");
+const tiers_1 = require("./tiers");
 var Instruction;
 (function (Instruction) {
     Instruction["Load"] = "load";
@@ -56,20 +57,28 @@ exports.instructions = {
                                     + "." + source.fileExtension;
                                 const media = new tasks_1.Media(source.number, fileName, task.list, task.id);
                                 task.list.push(media);
-                                switch (source.type) {
-                                    case "mediasource":
-                                        facet = facets_1.getFacetByHost("provider", source.url);
-                                        media.sources.push(new tasks_1.MediaSourceDirect(source.url, facet.name, facet.facetId));
-                                        break;
-                                    case "mirror":
-                                        facet = facets_1.getFacetByHost("mirror", source.url);
-                                        media.sources.push(new tasks_1.MediaSourceMirror(source.url, facet.name, facet.facetId));
-                                        break;
-                                    case "stream":
-                                        facet = facets_1.getFacet("streamresolver", source.resolver);
-                                        media.sources.push(new tasks_1.MediaSourceStream(source.url, facet.name, facet.facetId));
-                                        break;
-                                }
+                                void function addSources(media, source) {
+                                    switch (source.type) {
+                                        case "mediasource":
+                                            facet = facets_1.getFacetByHost("provider", source.url);
+                                            media.sources.push(new tasks_1.MediaSourceDirect(source.url, facet.name, facet.facetId));
+                                            break;
+                                        case "mirror":
+                                            facet = facets_1.getFacetByHost("mirror", source.url);
+                                            media.sources.push(new tasks_1.MediaSourceMirror(source.url, facet.name, facet.facetId));
+                                            break;
+                                        case "stream":
+                                            facet = facets_1.getFacet("streamresolver", source.resolver);
+                                            media.sources.push(new tasks_1.MediaSourceStream(source.url, facet.name, facet.facetId));
+                                            break;
+                                        case "media":
+                                            // Grouped sources
+                                            for (const src of tiers_1.rankItems("provider", provider.name, source.sources, task.settings.tiers)) {
+                                                addSources(media, src);
+                                            }
+                                            break;
+                                    }
+                                }(media, source);
                             }
                             // Create dl directory
                             fs.stat(task.dlDir, (err, stats) => {

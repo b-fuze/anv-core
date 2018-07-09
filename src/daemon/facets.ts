@@ -17,6 +17,7 @@ export {
   GenericResolverFacet as GenericResolver,
   StreamResolverFacet as StreamResolver,
   MediaSourceItem,
+  MediaSourceSubItem,
   ProviderItem,
   MirrorResult,
 } from "anv";

@@ -23,8 +23,8 @@ function rankItems(facet, facetName, items, tiers, tierRankMap) {
     }
     const copy = items.slice();
     copy.sort((a, b) => {
-        const aRank = a.tiers.reduce((tier1, tier2) => tier1 + tierRankMap[facet][facetName][tier2], 0);
-        const bRank = b.tiers.reduce((tier1, tier2) => tier1 + tierRankMap[facet][facetName][tier2], 0);
+        const aRank = (a.tiers || []).reduce((tier1, tier2) => tier1 + tierRankMap[facet][facetName][tier2], 0);
+        const bRank = (b.tiers || []).reduce((tier1, tier2) => tier1 + tierRankMap[facet][facetName][tier2], 0);
         return aRank - bRank;
     });
     return copy;

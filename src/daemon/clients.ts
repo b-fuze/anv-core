@@ -4,7 +4,7 @@ import {parse as parseUrl} from "url";
 import {jSh} from "jshorts";
 import {getPadding, bufferConcat} from "./utils";
 import {state} from "./state";
-import {getFacet, getFacetByHost} from "./facets";
+import {getFacet, getFacetByHost, MediaSourceItem, MediaSourceSubItem} from "./facets";
 import {queueAdd} from "./queue";
 import {
   crud,
@@ -19,6 +19,7 @@ import {
 } from "./tasks";
 import {resolveProvider} from "./resolve";
 import {validate, serialize, deserialize, MediaSerialized, MediaSourceSerialized} from "./serialize";
+import {rankItems} from "./tiers";
 
 export enum Instruction {
   Load = "load",
@@ -65,20 +66,28 @@ export const instructions = {
                 const media = new Media(source.number, fileName, task.list, task.id);
                 task.list.push(media);
 
-                switch (source.type) {
-                  case "mediasource":
-                    facet = getFacetByHost("provider", source.url);
-                    media.sources.push(new MediaSourceDirect(source.url, facet.name, facet.facetId));
-                    break;
-                  case "mirror":
-                    facet = getFacetByHost("mirror", source.url);
-                    media.sources.push(new MediaSourceMirror(source.url, facet.name, facet.facetId));
-                    break;
-                  case "stream":
-                    facet = getFacet("streamresolver", source.resolver);
-                    media.sources.push(new MediaSourceStream(source.url, facet.name, facet.facetId));
-                    break;
-                }
+                void function addSources(media: Media, source: MediaSourceItem | MediaSourceSubItem) {
+                  switch (source.type) {
+                    case "mediasource":
+                      facet = getFacetByHost("provider", source.url);
+                      media.sources.push(new MediaSourceDirect(source.url, facet.name, facet.facetId));
+                      break;
+                    case "mirror":
+                      facet = getFacetByHost("mirror", source.url);
+                      media.sources.push(new MediaSourceMirror(source.url, facet.name, facet.facetId));
+                      break;
+                    case "stream":
+                      facet = getFacet("streamresolver", source.resolver);
+                      media.sources.push(new MediaSourceStream(source.url, facet.name, facet.facetId));
+                      break;
+                    case "media":
+                      // Grouped sources
+                      for (const src of rankItems("provider", provider.name, source.sources, task.settings.tiers)) {
+                        addSources(media, src);
+                      }
+                      break;
+                  }
+                }(media, source);
               }
 
               // Create dl directory
