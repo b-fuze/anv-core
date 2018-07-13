@@ -96,7 +96,7 @@ export function clock() {
       let mirrorStream = false;
 
       if (mediaSource.type === "stream" && mediaSource.parentType === "mirror") {
-        mediaSource = mediaSources[mediaSource.parent];
+        mediaSource = crud.getMediaSource(mediaSource.parent);
         mirrorStream = true;
       }
 

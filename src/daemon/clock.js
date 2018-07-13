@@ -85,7 +85,7 @@ function clock() {
             let mediaSource = media.getSource();
             let mirrorStream = false;
             if (mediaSource.type === "stream" && mediaSource.parentType === "mirror") {
-                mediaSource = tasks_1.mediaSources[mediaSource.parent];
+                mediaSource = tasks_1.crud.getMediaSource(mediaSource.parent);
                 mirrorStream = true;
             }
             const queueFacet = (mirrorStream ? "mirrorstream" : sourceQueueMap[mediaSource.type]);

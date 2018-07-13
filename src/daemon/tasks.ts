@@ -87,6 +87,10 @@ export const crud = class {
   static getPendingMedia() {
     return mediaByStatus.PENDING;
   }
+  
+  static getMediaSource(id: number) {
+    return mediaSources[id] || null;
+  }
 }
 
 export function getSimpleName(title: string) {
@@ -278,9 +282,9 @@ class Media {
       return;
     }
 
-
     const source = this.getSource();
-
+    
+    // FIXME: This logic may be confusing
     if (this.queueId === null && this.status !== MediaStatus.PAUSED) {
       this.addQueue(source);
     } else {
@@ -290,20 +294,49 @@ class Media {
   }
 
   addQueue(source: MediaSource) {
-    const facetType = <keyof FacetStore> mediaSourceFacetMap[source.type];
-    const facet = getFacetById(facetType, source.facetId);
+    let refSource = source;
+    let streamChild = false;
+    
+    // Remap stream sources to their parents if any
+    if (source.type === MediaSourceType.Stream) {
+      streamChild = true;
+    
+      if (source.parent) {
+        refSource = crud.getMediaSource(source.parent);
+      } else {
+        // There's no parent, resolve this now
+        return this.resolveSource(source);
+      }
+    }
+    
+    const facetType = <keyof FacetStore> mediaSourceFacetMap[refSource.type];
+    const facet = getFacetById(facetType, refSource.facetId);
 
     const facetQueueMap = <{
       [facet: string]: string;
     }> {
       direct: "provider",
       mirror: "mirror",
-      // FIXME: No providerstream atm
-      stream: "providerstream",
     }
-
+    
+    // For stream sources' parents
+    const streamQueueMap = <{
+      [facet: string]: string;
+    }> {
+      direct: "providerstream",
+      mirror: "mirrorstream",
+    }
+    
     // Add to queue
-    this.queueId = queueAdd(<keyof QueueFacet> facetQueueMap[source.type], facet.facetId, null, this.id);
+    this.queueId = queueAdd(
+      <keyof QueueFacet> (streamChild
+                           ? streamQueueMap[refSource.type]
+                           : facetQueueMap[refSource.type]),
+      facet.facetId,
+      null,
+      this.id
+    );
+    
     this.setStatus(MediaStatus.PENDING);
   }
 

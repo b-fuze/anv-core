@@ -70,6 +70,9 @@ exports.crud = class {
     static getPendingMedia() {
         return exports.mediaByStatus.PENDING;
     }
+    static getMediaSource(id) {
+        return exports.mediaSources[id] || null;
+    }
 };
 function getSimpleName(title) {
     return title.replace(/[^a-z\d\s\-,:'()@!]/ig, "").replace(/\s+/g, " ");
@@ -204,6 +207,7 @@ class Media {
             return;
         }
         const source = this.getSource();
+        // FIXME: This logic may be confusing
         if (this.queueId === null && this.status !== MediaStatus.PAUSED) {
             this.addQueue(source);
         }
@@ -213,16 +217,34 @@ class Media {
         }
     }
     addQueue(source) {
-        const facetType = exports.mediaSourceFacetMap[source.type];
-        const facet = facets_1.getFacetById(facetType, source.facetId);
+        let refSource = source;
+        let streamChild = false;
+        // Remap stream sources to their parents if any
+        if (source.type === MediaSourceType.Stream) {
+            streamChild = true;
+            if (source.parent) {
+                refSource = exports.crud.getMediaSource(source.parent);
+            }
+            else {
+                // There's no parent, resolve this now
+                return this.resolveSource(source);
+            }
+        }
+        const facetType = exports.mediaSourceFacetMap[refSource.type];
+        const facet = facets_1.getFacetById(facetType, refSource.facetId);
         const facetQueueMap = {
             direct: "provider",
             mirror: "mirror",
-            // FIXME: No providerstream atm
-            stream: "providerstream",
+        };
+        // For stream sources' parents
+        const streamQueueMap = {
+            direct: "providerstream",
+            mirror: "mirrorstream",
         };
         // Add to queue
-        this.queueId = queue_1.queueAdd(facetQueueMap[source.type], facet.facetId, null, this.id);
+        this.queueId = queue_1.queueAdd((streamChild
+            ? streamQueueMap[refSource.type]
+            : facetQueueMap[refSource.type]), facet.facetId, null, this.id);
         this.setStatus(MediaStatus.PENDING);
     }
     stop(finished = false) {
