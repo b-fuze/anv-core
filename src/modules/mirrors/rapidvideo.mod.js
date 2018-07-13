@@ -2,7 +2,7 @@
 const {register} = require("anv");
 
 // Getting .mp4 link
-let videoRegEx = /https:\/\/www\d+.playercdn\.net\/\d+\/\d+\/+[a-zA-Z\d_-]+\/\d+\/\d+\/+[a-zA-Z\d]+\.mp4/
+const videoRegEx = /https:\/\/www\d+.playercdn\.net\/\d+\/\d+\/+[a-zA-Z\d_-]+\/\d+\/\d+\/+[a-zA-Z\d]+\.mp4/;
 
 register("mirror", {
   name: "rapidvideo",
@@ -24,11 +24,17 @@ register("mirror", {
     return /^https?:\/\/(www\.)?rapidvideo\.com\/+e\/+[a-zA-Z\d&]+(\?[a-z]+)?=(\d+p|(true|false))$/.test(url);
   },
   media(data, tier, url) {
-    var match = data.match(videoRegEx);
-    var video = match[1];
+    const match = data.match(videoRegEx);
+    
+    if (!match) {
+      // It didn't match, video probably deleted or server error, etc
+      // return `null` so ANV can skip this bad source
+      return null;
+    }
 
     return {
-      url: video[1]
+      // Return full matched url
+      url: match[0]
     };
   }
 });
