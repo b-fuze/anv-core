@@ -36,6 +36,21 @@ function exhuastedConcurrent(task: Task, activeMedia: number, setActive: number)
 }
 
 export function clock() {
+  let stop: (err: string) => void;
+  let backlog = 0;
+
+  function increaseBacklog() {
+    backlog++;
+  }
+
+  function decreaseBacklog() {
+    backlog--;
+
+    if (backlog === 0 && stop) {
+      stop(null);
+    }
+  }
+
   const clock = startTick([50, state.tickDelay, 2000], (tasks, intervals) => {
     let available = state.maxGlobalConcurrentDl
                     ? state.maxGlobalConcurrentDl - tmpState.currentDl
@@ -124,7 +139,9 @@ export function clock() {
           if (media.bufferStream.finished) {
             media.request = null;
             media.setStatus(MediaStatus.FINISHED);
-            media.outStream.write(bufferConcat(media.buffers));
+
+            increaseBacklog();
+            media.outStream.write(bufferConcat(media.buffers), decreaseBacklog);
 
             media.buffers = [];
             media.bufferedBytes = 0;
@@ -135,7 +152,9 @@ export function clock() {
             const stream = media.getSource();
             media.decreaseMirrorConn(stream);
           } else {
-            media.outStream.write(bufferConcat(media.buffers));
+            increaseBacklog();
+            media.outStream.write(bufferConcat(media.buffers), decreaseBacklog);
+
             media.bytes += bytes;
             media.buffers = [];
             media.bufferedBytes = 0;
@@ -148,9 +167,13 @@ export function clock() {
       for (const task of tasks) {
         if (task.loaded) {
           const serialized = serialize(task);
+          increaseBacklog();
+
           fs.writeFile(task.metaFile, JSON.stringify(serialized), err => {
             if (err) {
               console.log("ANV: Error writing task metadata for #" + task.id + " - " + task.title);
+            } else {
+              decreaseBacklog();
             }
           });
         }
@@ -161,6 +184,12 @@ export function clock() {
     processQueue(mediaIds => {
       // FIXME: Do something here
     });
+  }, (done) => {
+    if (backlog === 0) {
+      return done(null);
+    }
+
+    stop = done;
   });
 
   clock.start();

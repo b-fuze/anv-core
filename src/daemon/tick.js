@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tasks_1 = require("./tasks");
 const lces_1 = require("lces");
-function startTick(intervals = [1000], callback) {
+function startTick(intervals = [1000], callback, stopTick) {
     const intervalsSorted = Array.from(new Set(intervals)).sort((a, b) => a - b);
     const event = new lces_1.Component();
     event.newEvent("tick");
@@ -38,9 +38,17 @@ function startTick(intervals = [1000], callback) {
                 this.tick();
             }, this.smallestInterval);
         },
-        stop() {
+        stop(done) {
             this.ticking = false;
             clearInterval(this.tickId);
+            if (stopTick) {
+                stopTick((err) => {
+                    done && done(err);
+                });
+            }
+            else {
+                done && done(null);
+            }
         },
     };
     return tickData;
