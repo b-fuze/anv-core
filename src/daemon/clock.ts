@@ -107,6 +107,10 @@ export function clock() {
 
     // Iterate pending media
     for (const media of crud.getPendingMedia()) {
+      if (media.pendingBlocked) {
+        continue;
+      }
+
       let mediaSource = media.getSource();
       let mirrorStream = false;
 

@@ -93,6 +93,9 @@ function clock() {
         }
         // Iterate pending media
         for (const media of tasks_1.crud.getPendingMedia()) {
+            if (media.pendingBlocked) {
+                continue;
+            }
             let mediaSource = media.getSource();
             let mirrorStream = false;
             if (mediaSource.type === "stream" && mediaSource.parentType === "mirror") {
