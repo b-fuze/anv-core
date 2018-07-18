@@ -174,23 +174,23 @@ mainClock.event.on("tick", intervals => {
 console.log("DEBUG", (<any> global).ANV);
 
 process.on("SIGINT", () => {
-  console.log("");
-  const tasks = crud.getTasks();
-  let cancel = tasks.length;
-  let canceled = 0;
+  mainClock.stop(() => {
+    console.log("");
+    const tasks = crud.getTasks();
+    let cancel = tasks.length;
+    let canceled = 0;
 
-  for (const task of tasks) {
-    instructions.stop(task.id, err => {
-      canceled++;
+    for (const task of tasks) {
+      instructions.stop(task.id, err => {
+        canceled++;
 
-      if (canceled === cancel) {
-        process.nextTick(() => {
-          process.exit();
-        });
-      }
-    });
-    console.log("Stopped task #" + task.id + " - " + task.title);
-  }
-
-  mainClock.stop();
+        if (canceled === cancel) {
+          process.nextTick(() => {
+            process.exit();
+          });
+        }
+      });
+      console.log("Stopped task #" + task.id + " - " + task.title);
+    }
+  });
 });

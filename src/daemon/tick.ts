@@ -12,7 +12,7 @@ export interface Tick {
 
   tick(this: Tick): void;
   start(this: Tick): void;
-  stop(this: Tick): void;
+  stop(this: Tick, done?: (err?: string) => void): void;
 }
 
 export interface TickIntervalFlags {
@@ -23,7 +23,7 @@ export interface TickEvent {
   tick: TickIntervalFlags;
 }
 
-export function startTick(intervals = [1000], callback: (tasks: Task[], intervals: TickIntervalFlags) => void): Tick {
+export function startTick(intervals = [1000], callback: (tasks: Task[], intervals: TickIntervalFlags) => void, stopTick?: (done: (err?: string) => void) => void): Tick {
   const intervalsSorted = Array.from(new Set(intervals)).sort((a, b) => a - b);
 
   const event = new Component<StateModel, TickEvent>();
@@ -68,9 +68,17 @@ export function startTick(intervals = [1000], callback: (tasks: Task[], interval
       }, this.smallestInterval);
     },
 
-    stop() {
+    stop(done) {
       this.ticking = false;
       clearInterval(this.tickId);
+
+      if (stopTick) {
+        stopTick((err) => {
+          done && done(err);
+        });
+      } else {
+        done && done(null);
+      }
     },
   };
 

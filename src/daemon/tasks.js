@@ -145,6 +145,7 @@ class Media {
     constructor(title, fileName, taskMediaList, taskId) {
         this.selected = true;
         this.status = MediaStatus.IDLE;
+        this.pendingBlocked = false;
         this.bytes = 0;
         this.size = null;
         this.sources = [];
@@ -380,10 +381,28 @@ class Media {
             this.decreaseMirrorConn(this.getSource());
             // Go to the next source
             this.nextSource();
-            if (this.getSource()) {
+            // Reset media properties
+            this.bytes = 0;
+            this.bufferedBytes = 0;
+            this.size = null;
+            this.buffers = [];
+            if (this.outStream) {
+                this.pendingBlocked = true;
+                this.outStream.end(() => {
+                    fs.writeFile(this.getFilePath(), Buffer.alloc(0), (err) => {
+                        if (!err) {
+                            // FIXME: Log the error somewhere
+                            this.pendingBlocked = false;
+                        }
+                    });
+                });
+                this.outStream = null;
+            }
+            const newSource = this.getSource();
+            if (newSource) {
                 // FIXME: Use queue here or smth
                 setTimeout(() => {
-                    media.resolveSource(this.getSource());
+                    media.resolveSource(newSource);
                 }, 1000);
             }
             else {
@@ -441,7 +460,7 @@ class Media {
         const task = this.getTask();
         const out = this.bufferStream = new MediaStream(this);
         if (!this.outStream) {
-            this.outStream = fs.createWriteStream(task.dlDir + path.sep + this.fileName, {
+            this.outStream = fs.createWriteStream(this.getFilePath(), {
                 flags: "a",
                 encoding: "binary",
             });
@@ -459,6 +478,9 @@ class Media {
     }
     getTask() {
         return exports.crud.getTask(this.taskId);
+    }
+    getFilePath() {
+        return this.getTask().dlDir + path.sep + this.fileName;
     }
 }
 exports.Media = Media;

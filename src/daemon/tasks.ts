@@ -87,7 +87,7 @@ export const crud = class {
   static getPendingMedia() {
     return mediaByStatus.PENDING;
   }
-  
+
   static getMediaSource(id: number) {
     return mediaSources[id] || null;
   }
@@ -200,6 +200,7 @@ class Media {
 
   selected: boolean = true;
   status: MediaStatus = MediaStatus.IDLE;
+  pendingBlocked = false;
   bytes: number = 0;
   size: number = null;
   sources: MediaSource[] = [];
@@ -283,7 +284,7 @@ class Media {
     }
 
     const source = this.getSource();
-    
+
     // FIXME: This logic may be confusing
     if (this.queueId === null && this.status !== MediaStatus.PAUSED) {
       this.addQueue(source);
@@ -296,11 +297,11 @@ class Media {
   addQueue(source: MediaSource) {
     let refSource = source;
     let streamChild = false;
-    
+
     // Remap stream sources to their parents if any
     if (source.type === MediaSourceType.Stream) {
       streamChild = true;
-    
+
       if (source.parent) {
         refSource = crud.getMediaSource(source.parent);
       } else {
@@ -308,7 +309,7 @@ class Media {
         return this.resolveSource(source);
       }
     }
-    
+
     const facetType = <keyof FacetStore> mediaSourceFacetMap[refSource.type];
     const facet = getFacetById(facetType, refSource.facetId);
 
@@ -318,7 +319,7 @@ class Media {
       direct: "provider",
       mirror: "mirror",
     }
-    
+
     // For stream sources' parents
     const streamQueueMap = <{
       [facet: string]: string;
@@ -326,7 +327,7 @@ class Media {
       direct: "providerstream",
       mirror: "mirrorstream",
     }
-    
+
     // Add to queue
     this.queueId = queueAdd(
       <keyof QueueFacet> (streamChild
@@ -336,7 +337,7 @@ class Media {
       null,
       this.id
     );
-    
+
     this.setStatus(MediaStatus.PENDING);
   }
 
@@ -503,10 +504,32 @@ class Media {
       // Go to the next source
       this.nextSource();
 
-      if (this.getSource()) {
+      // Reset media properties
+      this.bytes = 0;
+      this.bufferedBytes = 0;
+      this.size = null;
+      this.buffers = [];
+
+      if (this.outStream) {
+        this.pendingBlocked = true;
+
+        this.outStream.end(() => {
+          fs.writeFile(this.getFilePath(), Buffer.alloc(0), (err) => {
+            if (!err) {
+              // FIXME: Log the error somewhere
+              this.pendingBlocked = false;
+            }
+          });
+        });
+
+        this.outStream = null;
+      }
+
+      const newSource = this.getSource();
+      if (newSource) {
         // FIXME: Use queue here or smth
         setTimeout(() => {
-          media.resolveSource(this.getSource());
+          media.resolveSource(newSource);
         }, 1000);
       } else {
         media.setStatus(MediaStatus.FINISHED);
@@ -574,7 +597,7 @@ class Media {
     const out = this.bufferStream = new MediaStream(this);
 
     if (!this.outStream) {
-      this.outStream = fs.createWriteStream(task.dlDir + path.sep + this.fileName, {
+      this.outStream = fs.createWriteStream(this.getFilePath(), {
         flags: "a",
         encoding: "binary",
       });
@@ -596,6 +619,10 @@ class Media {
 
   getTask() {
     return crud.getTask(this.taskId);
+  }
+
+  getFilePath() {
+    return this.getTask().dlDir + path.sep + this.fileName;
   }
 }
 

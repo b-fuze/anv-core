@@ -38,6 +38,17 @@ function exhuastedConcurrent(task, activeMedia, setActive) {
             && activeMedia >= state_1.state.maxConcurrentDl);
 }
 function clock() {
+    let stop;
+    let backlog = 0;
+    function increaseBacklog() {
+        backlog++;
+    }
+    function decreaseBacklog() {
+        backlog--;
+        if (backlog === 0 && stop) {
+            stop(null);
+        }
+    }
     const clock = tick_1.startTick([50, state_1.state.tickDelay, 2000], (tasks, intervals) => {
         let available = state_1.state.maxGlobalConcurrentDl
             ? state_1.state.maxGlobalConcurrentDl - state_1.tmpState.currentDl
@@ -82,6 +93,9 @@ function clock() {
         }
         // Iterate pending media
         for (const media of tasks_1.crud.getPendingMedia()) {
+            if (media.pendingBlocked) {
+                continue;
+            }
             let mediaSource = media.getSource();
             let mirrorStream = false;
             if (mediaSource.type === "stream" && mediaSource.parentType === "mirror") {
@@ -108,7 +122,8 @@ function clock() {
                     if (media.bufferStream.finished) {
                         media.request = null;
                         media.setStatus(tasks_1.MediaStatus.FINISHED);
-                        media.outStream.write(utils_1.bufferConcat(media.buffers));
+                        increaseBacklog();
+                        media.outStream.write(utils_1.bufferConcat(media.buffers), decreaseBacklog);
                         media.buffers = [];
                         media.bufferedBytes = 0;
                         media.outStream.end();
@@ -118,7 +133,8 @@ function clock() {
                         media.decreaseMirrorConn(stream);
                     }
                     else {
-                        media.outStream.write(utils_1.bufferConcat(media.buffers));
+                        increaseBacklog();
+                        media.outStream.write(utils_1.bufferConcat(media.buffers), decreaseBacklog);
                         media.bytes += bytes;
                         media.buffers = [];
                         media.bufferedBytes = 0;
@@ -130,9 +146,13 @@ function clock() {
             for (const task of tasks) {
                 if (task.loaded) {
                     const serialized = serialize_1.serialize(task);
+                    increaseBacklog();
                     fs.writeFile(task.metaFile, JSON.stringify(serialized), err => {
                         if (err) {
                             console.log("ANV: Error writing task metadata for #" + task.id + " - " + task.title);
+                        }
+                        else {
+                            decreaseBacklog();
                         }
                     });
                 }
@@ -142,6 +162,11 @@ function clock() {
         queue_1.processQueue(mediaIds => {
             // FIXME: Do something here
         });
+    }, (done) => {
+        if (backlog === 0) {
+            return done(null);
+        }
+        stop = done;
     });
     clock.start();
     return clock;
