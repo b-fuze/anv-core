@@ -28,6 +28,7 @@ register("provider", {
   tiers: [
     ["streamango", "Streamango"],
     ["openload", "Openload"],
+    ["rapidvideo", "RapidVideo"],
   ],
   mediaList(jSh) {
     const title = jSh("h2.title")[0].textContent.trim();
