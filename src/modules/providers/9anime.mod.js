@@ -50,7 +50,7 @@ register("provider", {
     for (const server of jSh(".widget.servers .tabs .tab")) {
       const name = server.textContent.trim().toLowerCase();
 
-      if (/^(streamango|openload)$/.test(name)) {
+      if (/^(streamango|openload|rapidvideo)$/.test(name)) {
         serverMap[server.getAttribute("data-name")] = name;
       }
     }
