@@ -63,43 +63,14 @@ if (args.ws) {
 }
 
 // Create fake client request
-state.task.dlPath = "/home/b-fuse/old/tmp/anv-test/test3";
-state.maxGlobalConcurrentDl = 3;
+state.task.dlPath = "/home/b-fuse/old/tmp/anv-test/test";
+state.maxGlobalConcurrentDl = 5;
 state.limitOnlyGlobal = true;
-state.maxSourceRetries = 1;
 
 console.log("ANV & Client test");
-// const taskUrl = "http://www.animerush.tv/anime/Uma-Musume-Pretty-Derby-TV/";
-// const taskUrl = "https://www3.gogoanime.se/category/solty-rei";
-const taskUrl = "https://www4.gogoanime.se/category/teekyuu";
-const taskUrl2 = "https://www4.gogoanime.se/category/teekyuu-2";
-const taskUrl3 = "https://www4.gogoanime.se/category/teekyuu-3";
-const taskUrl4 = "https://www4.gogoanime.se/category/teekyuu-4";
-// const taskUrl2 = "http://www.animerush.tv/anime/Tokyo-Ghoul-re/";
-
-// fs.readdir(state.task.dlPath, (err, files) => {
-const files = [
-  "Comic Girls",
-];
-
-for (const file of files) {
-  const localPath = state.task.dlPath + path.sep + file;
-
-  instructions.loadLocal(localPath, false, (err, taskId) => {
-    if (err) {
-      console.log("Error loading local task - " + localPath);
-    } else {
-      const task = crud.getTask(taskId);
-
-      console.log("Successfully loaded task - #" + taskId + " " + task.title);
-      // console.dir(task, {depth: null, color: true});
-
-      // Start task
-      task.active = true;
-    }
-  });
-}
-// });
+const taskUrl = "http://www.animerush.tv/anime/shakugan-no-shana/";
+const taskUrl2 = "http://www.animerush.tv/anime/shakugan-no-shana-ii/";
+const taskUrl3 = "http://www.animerush.tv/anime/shakugan-no-shana-iii/";
 
 instructions.load(taskUrl, (err, taskId) => {
   if (err) {
@@ -109,51 +80,54 @@ instructions.load(taskUrl, (err, taskId) => {
 
     task.on("load", load => {
       // Start task
-      // for (const m of task.list) {
-      //   m.selected = false;
-      //
-      //   if (+m.title === 5) {
-      //     m.selected = true;
-      //   }
-      // }
-      task.list[0] = undefined;
+      task.active = true;
 
-      // console.dir(task, {depth: null, color: true});
+fs.readdir(state.task.dlPath, (err, files) => {
+  for (const file of files) {
+    const localPath = state.task.dlPath + path.sep + file;
+
+    instructions.loadLocal(localPath, false, (err, taskId) => {
+      if (err) {
+        console.log("Error loading local task - " + localPath);
+      } else {
+        const task = crud.getTask(taskId);
+
+        console.log("Successfully loaded task - " + taskId);
+        console.dir(task, {depth: null, color: true});
+
+        // Start task
+        task.active = true;
+      }
+    });
+  }
+});
+
+instructions.load(taskUrl2, (err, taskId) => {
+  if (err) {
+    console.error(err);
+  } else {
+    const task = crud.getTask(taskId);
+
+    task.on("load", load => {
+      // Start task
       task.active = true;
     });
   }
 });
 
-// instructions.load(taskUrl2, (err, taskId) => {
-//   if (err) {
-//     console.error(err);
-//   } else {
-//     const task = crud.getTask(taskId);
-//
-//     task.on("load", load => {
-//       // for (const m of task.list) {
-//       //   if (+m.title < 5) m.selected = false;
-//       // }
-//
-//       // Start task
-//       task.active = true;
-//     });
-//   }
-// });
-//
-// instructions.load(taskUrl3, (err, taskId) => {
-//   if (err) {
-//     console.error(err);
-//   } else {
-//     const task = crud.getTask(taskId);
-//
-//     task.on("load", load => {
-//       // Start task
-//       task.active = true;
-//     });
-//   }
-// });
-//
+instructions.load(taskUrl3, (err, taskId) => {
+  if (err) {
+    console.error(err);
+  } else {
+    const task = crud.getTask(taskId);
+
+    task.on("load", load => {
+      // Start task
+      task.active = true;
+    });
+  }
+});
+
 // instructions.load(taskUrl4, (err, taskId) => {
 //   if (err) {
 //     console.error(err);
