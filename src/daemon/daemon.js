@@ -10,7 +10,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const minimist_1 = __importDefault(require("minimist"));
 const state_1 = require("./state");
@@ -61,13 +60,38 @@ if (args.ws) {
     listenWS();
 }
 // Create fake client request
-state_1.state.task.dlPath = "/home/b-fuse/old/tmp/anv-test/test";
-state_1.state.maxGlobalConcurrentDl = 5;
+state_1.state.task.dlPath = "/home/b-fuse/old/tmp/anv-test/test3";
+state_1.state.maxGlobalConcurrentDl = 3;
 state_1.state.limitOnlyGlobal = true;
+state_1.state.maxSourceRetries = 1;
 console.log("ANV & Client test");
-const taskUrl = "http://www.animerush.tv/anime/shakugan-no-shana/";
-const taskUrl2 = "http://www.animerush.tv/anime/shakugan-no-shana-ii/";
-const taskUrl3 = "http://www.animerush.tv/anime/shakugan-no-shana-iii/";
+// const taskUrl = "http://www.animerush.tv/anime/Uma-Musume-Pretty-Derby-TV/";
+// const taskUrl = "https://www3.gogoanime.se/category/solty-rei";
+const taskUrl = "https://www4.gogoanime.se/category/teekyuu";
+const taskUrl2 = "https://www4.gogoanime.se/category/teekyuu-2";
+const taskUrl3 = "https://www4.gogoanime.se/category/teekyuu-3";
+const taskUrl4 = "https://www4.gogoanime.se/category/teekyuu-4";
+// const taskUrl2 = "http://www.animerush.tv/anime/Tokyo-Ghoul-re/";
+// fs.readdir(state.task.dlPath, (err, files) => {
+const files = [
+    "Comic Girls",
+];
+for (const file of files) {
+    const localPath = state_1.state.task.dlPath + path.sep + file;
+    clients_1.instructions.loadLocal(localPath, false, (err, taskId) => {
+        if (err) {
+            console.log("Error loading local task - " + localPath);
+        }
+        else {
+            const task = tasks_1.crud.getTask(taskId);
+            console.log("Successfully loaded task - #" + taskId + " " + task.title);
+            // console.dir(task, {depth: null, color: true});
+            // Start task
+            task.active = true;
+        }
+    });
+}
+// });
 clients_1.instructions.load(taskUrl, (err, taskId) => {
     if (err) {
         console.error(err);
@@ -76,48 +100,49 @@ clients_1.instructions.load(taskUrl, (err, taskId) => {
         const task = tasks_1.crud.getTask(taskId);
         task.on("load", load => {
             // Start task
+            // for (const m of task.list) {
+            //   m.selected = false;
+            //
+            //   if (+m.title === 5) {
+            //     m.selected = true;
+            //   }
+            // }
+            task.list[0] = undefined;
+            // console.dir(task, {depth: null, color: true});
             task.active = true;
         });
     }
 });
-clients_1.instructions.load(taskUrl2, (err, taskId) => {
-    if (err) {
-        console.error(err);
-    }
-    else {
-        const task = tasks_1.crud.getTask(taskId);
-        task.on("load", load => {
-            // Start task
-            task.active = true;
-fs.readdir(state_1.state.task.dlPath, (err, files) => {
-    for (const file of files) {
-        const localPath = state_1.state.task.dlPath + path.sep + file;
-        clients_1.instructions.loadLocal(localPath, false, (err, taskId) => {
-            if (err) {
-                console.log("Error loading local task - " + localPath);
-            }
-            else {
-                const task = tasks_1.crud.getTask(taskId);
-                console.log("Successfully loaded task - " + taskId);
-                console.dir(task, { depth: null, color: true });
-                // Start task
-                task.active = true;
-            }
-        });
-    }
-});
-clients_1.instructions.load(taskUrl3, (err, taskId) => {
-    if (err) {
-        console.error(err);
-    }
-    else {
-        const task = tasks_1.crud.getTask(taskId);
-        task.on("load", load => {
-            // Start task
-            task.active = true;
-        });
-    }
-});
+// instructions.load(taskUrl2, (err, taskId) => {
+//   if (err) {
+//     console.error(err);
+//   } else {
+//     const task = crud.getTask(taskId);
+//
+//     task.on("load", load => {
+//       // for (const m of task.list) {
+//       //   if (+m.title < 5) m.selected = false;
+//       // }
+//
+//       // Start task
+//       task.active = true;
+//     });
+//   }
+// });
+//
+// instructions.load(taskUrl3, (err, taskId) => {
+//   if (err) {
+//     console.error(err);
+//   } else {
+//     const task = crud.getTask(taskId);
+//
+//     task.on("load", load => {
+//       // Start task
+//       task.active = true;
+//     });
+//   }
+// });
+//
 // instructions.load(taskUrl4, (err, taskId) => {
 //   if (err) {
 //     console.error(err);
