@@ -272,7 +272,7 @@ class Media {
         switch (source.type) {
             case "direct":
                 resolve_1.resolveProviderSource(source.url, this.sources.length !== 1, (err, sources) => {
-                    if (err) {
+                    if (err || !sources) {
                         console.log("ANV Provider Error: ", err);
                         this.reattemptSources();
                     }
