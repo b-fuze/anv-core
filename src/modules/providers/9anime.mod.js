@@ -35,7 +35,7 @@ register("provider", {
     const cover = jSh(".widget-body .thumb img")[0].src;
     const host = parse(jSh.url).host;
     const ts = jSh("html")[0].getAttribute("data-ts");
-    const underscore = 674; // FIXME: Wha? Why?
+    const underscore = 777; // FIXME: Wha? Why?
 
     const metadata = {
       title,

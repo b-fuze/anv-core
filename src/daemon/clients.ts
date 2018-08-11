@@ -66,6 +66,7 @@ export const instructions = {
                 const media = new Media(source.number, fileName, task.list, task.id);
                 task.list.push(media);
 
+                // FIXME: Why this IIFE?
                 void function addSources(media: Media, source: MediaSourceItem | MediaSourceSubItem) {
                   switch (source.type) {
                     case "mediasource":
@@ -227,31 +228,13 @@ export const instructions = {
 
       for (const media of task.list) {
         if (media.status === MediaStatus.ACTIVE) {
-          media.setStatus(MediaStatus.PAUSED);
+          media.stop(false, () => {
+            finished++;
 
-          if (media.request) {
-            media.request.stop();
-          }
-
-          if (media.outStream) {
-            media.outStream.write(bufferConcat(media.buffers));
-            media.outStream.end(() => {
-              finished++;
-
-              if (finished === toComplete) {
-                done(null);
-              }
-            });
-
-            media.outStream = null;
-          }
-
-          media.bytes += media.bufferedBytes;
-          media.buffers = [];
-          media.bufferedBytes = 0;
-
-          const stream = media.getSource();
-          media.decreaseMirrorConn(stream);
+            if (finished === toComplete) {
+              done(null);
+            }
+          });
 
           toComplete++;
         }

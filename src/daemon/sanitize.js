@@ -1,4 +1,5 @@
 "use strict";
+// Sanitize modules
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("./utils");
 function validStructure(input, output, structure) {
@@ -131,6 +132,7 @@ class sanitize {
             mediaList: [true, "function:1"],
             mediaSource: [false, "function:2"],
             search: [false, "function:1"],
+            id: [false, "function:1"],
         });
         if (Array.isArray(output.hosts)) {
             for (const host of output.hosts) {

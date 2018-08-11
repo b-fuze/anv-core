@@ -10,7 +10,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const minimist_1 = __importDefault(require("minimist"));
 const state_1 = require("./state");
@@ -61,63 +60,65 @@ if (args.ws) {
     listenWS();
 }
 // Create fake client request
-state_1.state.task.dlPath = "/home/b-fuse/old/tmp/anv-test/test";
-state_1.state.maxGlobalConcurrentDl = 5;
+state_1.state.task.dlPath = "/home/b-fuse/old/tmp/anv-test/test3";
+state_1.state.maxGlobalConcurrentDl = 3;
 state_1.state.limitOnlyGlobal = true;
 console.log("ANV & Client test");
-const taskUrl = "http://www.animerush.tv/anime/shakugan-no-shana/";
-const taskUrl2 = "http://www.animerush.tv/anime/shakugan-no-shana-ii/";
+const taskUrl = "https://gogoanime.sh/category/hisone-to-maso-tan";
+const taskUrl2 = "https://gogoanime.sh/category/last-period-owarinaki-rasen-no-monogatari";
 const taskUrl3 = "http://www.animerush.tv/anime/shakugan-no-shana-iii/";
-clients_1.instructions.load(taskUrl, (err, taskId) => {
-    if (err) {
-        console.error(err);
-    }
-    else {
-        const task = tasks_1.crud.getTask(taskId);
-        task.on("load", load => {
+// fs.readdir(state.task.dlPath, (err, files) => {
+const files = [
+    "Hisone to Maso-tan",
+];
+for (const file of files) {
+    const localPath = state_1.state.task.dlPath + path.sep + file;
+    clients_1.instructions.loadLocal(localPath, false, (err, taskId) => {
+        if (err) {
+            console.log("Error loading local task - " + localPath);
+        }
+        else {
+            const task = tasks_1.crud.getTask(taskId);
+            console.log("Successfully loaded task - " + taskId);
+            console.dir(task, { depth: null, color: true });
             // Start task
             task.active = true;
-        });
-    }
-});
-clients_1.instructions.load(taskUrl2, (err, taskId) => {
-    if (err) {
-        console.error(err);
-    }
-    else {
-        const task = tasks_1.crud.getTask(taskId);
-        task.on("load", load => {
-            // Start task
-            task.active = true;
-fs.readdir(state_1.state.task.dlPath, (err, files) => {
-    for (const file of files) {
-        const localPath = state_1.state.task.dlPath + path.sep + file;
-        clients_1.instructions.loadLocal(localPath, false, (err, taskId) => {
-            if (err) {
-                console.log("Error loading local task - " + localPath);
-            }
-            else {
-                const task = tasks_1.crud.getTask(taskId);
-                console.log("Successfully loaded task - " + taskId);
-                console.dir(task, { depth: null, color: true });
-                // Start task
-                task.active = true;
-            }
-        });
-    }
-});
-clients_1.instructions.load(taskUrl3, (err, taskId) => {
-    if (err) {
-        console.error(err);
-    }
-    else {
-        const task = tasks_1.crud.getTask(taskId);
-        task.on("load", load => {
-            // Start task
-            task.active = true;
-        });
-    }
-});
+        }
+    });
+}
+// });
+//
+// instructions.load(taskUrl, (err, taskId) => {
+//   if (err) {
+//     console.error(err);
+//   } else {
+//     const task = crud.getTask(taskId);
+//
+//     task.on("load", load => {
+//       // for (const m of task.list) {
+//       //   if (+m.title <= 10) {
+//       //     m.selected = false;
+//       //   }
+//       // }
+//
+//       // Start task
+//       task.active = true;
+//     });
+//   }
+// });
+//
+// instructions.load(taskUrl2, (err, taskId) => {
+//   if (err) {
+//     console.error(err);
+//   } else {
+//     const task = crud.getTask(taskId);
+//
+//     task.on("load", load => {
+//       // Start task
+//       task.active = true;
+//     });
+//   }
+// });
 // instructions.load(taskUrl4, (err, taskId) => {
 //   if (err) {
 //     console.error(err);

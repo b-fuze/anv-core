@@ -75,28 +75,28 @@ export function clock() {
         for (const media of task.list) {
           if (media.selected) {
             if (media.status !== MediaStatus.FINISHED) {
-                if (media.status === MediaStatus.IDLE || media.status === MediaStatus.PAUSED) {
-                  if (!exhuastedConcurrent(task, activeMedia, setActive)) {
-                    media.start();
-                    setActive++;
+              if (media.status === MediaStatus.IDLE || media.status === MediaStatus.PAUSED) {
+                if (!exhuastedConcurrent(task, activeMedia, setActive)) {
+                  media.start();
+                  setActive++;
 
-                    if (!state.maxGlobalConcurrentDl) {
-                      available--;
-                    }
+                  if (!state.maxGlobalConcurrentDl) {
+                    available--;
                   }
                 }
+              }
 
-                if (media.status === MediaStatus.ACTIVE || media.status === MediaStatus.PENDING) {
-                  activeMedia++;
-                }
+              if (media.status === MediaStatus.ACTIVE || media.status === MediaStatus.PENDING) {
+                activeMedia++;
+              }
 
-                if (state.taskFairness && setActive) {
-                  break mediaLoop;
-                }
+              if (state.taskFairness && setActive) {
+                break mediaLoop;
+              }
 
-                if (exhuastedConcurrent(task, activeMedia, setActive)) {
-                  break mediaLoop;
-                }
+              if (exhuastedConcurrent(task, activeMedia, setActive)) {
+                break mediaLoop;
+              }
             }
           }
         }

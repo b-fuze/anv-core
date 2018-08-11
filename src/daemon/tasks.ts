@@ -2,7 +2,7 @@ import * as path from "path";
 import * as fs from "fs";
 import {Writable} from "stream";
 import {parse as parseUrl} from "url";
-import {type} from "./utils";
+import {type, bufferConcat} from "./utils";
 import {Component, StateModel} from "lces";
 import {
   Provider,
@@ -200,7 +200,7 @@ class Media {
 
   selected: boolean = true;
   status: MediaStatus = MediaStatus.IDLE;
-  pendingBlocked = false;
+  pendingBlocked: boolean = false;
   bytes: number = 0;
   size: number = null;
   sources: MediaSource[] = [];
@@ -341,7 +341,7 @@ class Media {
     this.setStatus(MediaStatus.PENDING);
   }
 
-  stop(finished = false) {
+  stop(finished = false, done?: (err: string) => void) {
     if (this.status !== MediaStatus.ACTIVE && this.status !== MediaStatus.FINISHED) {
       return;
     }
@@ -351,7 +351,39 @@ class Media {
       this.request = null;
     }
 
-    this.setStatus(MediaStatus.PAUSED);
+    if (this.outStream) {
+      this.outStream.write(bufferConcat(this.buffers));
+      this.outStream.end(() => {
+        done(null);
+      });
+
+      this.outStream = null;
+    }
+
+    this.bytes += this.bufferedBytes;
+    this.buffers = [];
+    this.bufferedBytes = 0;
+
+    // Prevent any further writes or modifications from a MediaStream
+    this.totalAttempts++;
+
+    if (this.status === MediaStatus.ACTIVE) {
+      const stream = this.getSource();
+      this.decreaseMirrorConn(stream);
+    }
+
+    // FIXME: This conditional doesn't account for most possibilities yet
+    if (finished) {
+      this.setStatus(MediaStatus.FINISHED);
+    } else {
+      this.setStatus(MediaStatus.PAUSED);
+    }
+
+    if (!this.outStream) {
+      setTimeout(() => {
+        done(null);
+      }, 0);
+    }
   }
 
   nextSource() {
@@ -490,7 +522,7 @@ class Media {
     const media = this;
     const task = media.getTask();
 
-    media.totalAttempts++;
+    const attempt = ++media.totalAttempts;
     console.log("ANV Stream Error for source #" + media.source + " in Media #" + media.id + " - " + media.fileName);
 
     if (skip || media.sourceAttempts >= state.maxSourceRetries) {
@@ -504,7 +536,7 @@ class Media {
       // Go to the next source
       this.nextSource();
 
-      // Reset media properties
+      // Reset active media properties
       this.bytes = 0;
       this.bufferedBytes = 0;
       this.size = null;
@@ -529,7 +561,10 @@ class Media {
       if (newSource) {
         // FIXME: Use queue here or smth
         setTimeout(() => {
-          media.resolveSource(newSource);
+          if (this.totalAttempts === attempt) {
+            media.resolveSource(newSource);
+          }
+
         }, 1000);
       } else {
         media.setStatus(MediaStatus.FINISHED);
@@ -660,6 +695,8 @@ class MediaStream extends Writable {
   }
 
   error(err: any) {
+    // FIXME: Report err
+
     if (this.mediaAttempt === this.media.totalAttempts) {
       this.end();
       this.media.reattemptSources();
