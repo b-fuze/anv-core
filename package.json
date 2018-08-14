@@ -2,13 +2,21 @@
   "name": "anv-core",
   "version": "0.0.1",
   "dependencies": {
-    "@types/jsdom": "^11.0.4",
-    "@types/minimist": "^1.2.0",
-    "@types/node": "^10.1.2",
-    "@types/request": "^2.47.0",
     "cloudscraper": "^1.5.0",
     "jsdom": "^11.11.0",
     "minimist": "^1.2.0",
-    "request": "^2.87.0"
+    "request": "^2.87.0",
+    "ws": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^5.1.2",
+    "@types/jsdom": "^11.0.4",
+    "@types/minimist": "^1.2.0",
+    "@types/node": "^10.1.2",
+    "@types/request": "^2.47.0"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.0",
+    "utf-8-validate": "^5.0.1"
   }
 }
