@@ -186,7 +186,7 @@ export const instructions = {
             }
 
             // Update dlPath setting
-            readyTask.settings.dlPath = localPath;
+            readyTask.settings.dlPath = path.dirname(localPath);
 
             done(null, readyTask.id);
           }
