@@ -257,7 +257,7 @@ class Media {
             this.request.stop();
             this.request = null;
         }
-        if (this.outStream) {
+        if (hasOutstream) {
             this.outStream.write(utils_1.bufferConcat(this.buffers));
             this.outStream.end(() => {
                 done(null);

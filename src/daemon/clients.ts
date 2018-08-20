@@ -175,18 +175,20 @@ export const instructions = {
 
             // Deserialize
             const readyTask = deserialize(task, media, mediaSources);
-            readyTask.task.metaFile = metaPath;
-            readyTask.task.dlDir = readyTask.task.settings.dlPath + path.sep + getSimpleName(readyTask.task.title);
-            readyTask.task.loaded = true;
+            readyTask.metaFile = metaPath;
+            readyTask.dlDir = readyTask.settings.dlPath + path.sep + getSimpleName(readyTask.title);
+            readyTask.loaded = true;
 
-            for (const media of readyTask.task.list) {
+            for (const media of readyTask.list) {
               if (media.status === MediaStatus.FINISHED) {
-                readyTask.task.finishedFromStart++;
+                readyTask.finishedFromStart++;
               }
             }
 
-            // FIXME: Remove redundant object wrapper
-            done(null, readyTask.task.id);
+            // Update dlPath setting
+            readyTask.settings.dlPath = localPath;
+
+            done(null, readyTask.id);
           }
         }
       });
