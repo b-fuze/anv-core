@@ -346,6 +346,7 @@ class Media {
       return;
     }
 
+    const hasOutstream = !!this.outStream;
     if (this.request) {
       this.request.stop();
       this.request = null;
@@ -379,7 +380,7 @@ class Media {
       this.setStatus(MediaStatus.PAUSED);
     }
 
-    if (!this.outStream) {
+    if (!hasOutstream) {
       setTimeout(() => {
         done(null);
       }, 0);
