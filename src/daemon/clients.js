@@ -57,6 +57,7 @@ exports.instructions = {
                                     + "." + source.fileExtension;
                                 const media = new tasks_1.Media(source.number, fileName, task.list, task.id);
                                 task.list.push(media);
+                                // FIXME: Why this IIFE?
                                 void function addSources(media, source) {
                                     switch (source.type) {
                                         case "mediasource":
@@ -158,16 +159,17 @@ exports.instructions = {
                         }
                         // Deserialize
                         const readyTask = serialize_1.deserialize(task, media, mediaSources);
-                        readyTask.task.metaFile = metaPath;
-                        readyTask.task.dlDir = readyTask.task.settings.dlPath + path.sep + tasks_1.getSimpleName(readyTask.task.title);
-                        readyTask.task.loaded = true;
-                        for (const media of readyTask.task.list) {
+                        readyTask.metaFile = metaPath;
+                        readyTask.dlDir = readyTask.settings.dlPath + path.sep + tasks_1.getSimpleName(readyTask.title);
+                        readyTask.loaded = true;
+                        for (const media of readyTask.list) {
                             if (media.status === tasks_1.MediaStatus.FINISHED) {
-                                readyTask.task.finishedFromStart++;
+                                readyTask.finishedFromStart++;
                             }
                         }
-                        // FIXME: Remove redundant object wrapper
-                        done(null, readyTask.task.id);
+                        // Update dlPath setting
+                        readyTask.settings.dlPath = path.dirname(localPath);
+                        done(null, readyTask.id);
                     }
                 }
             });
@@ -200,25 +202,12 @@ exports.instructions = {
             task.active = false;
             for (const media of task.list) {
                 if (media.status === tasks_1.MediaStatus.ACTIVE) {
-                    media.setStatus(tasks_1.MediaStatus.PAUSED);
-                    if (media.request) {
-                        media.request.stop();
-                    }
-                    if (media.outStream) {
-                        media.outStream.write(utils_1.bufferConcat(media.buffers));
-                        media.outStream.end(() => {
-                            finished++;
-                            if (finished === toComplete) {
-                                done(null);
-                            }
-                        });
-                        media.outStream = null;
-                    }
-                    media.bytes += media.bufferedBytes;
-                    media.buffers = [];
-                    media.bufferedBytes = 0;
-                    const stream = media.getSource();
-                    media.decreaseMirrorConn(stream);
+                    media.stop(false, () => {
+                        finished++;
+                        if (finished === toComplete) {
+                            done(null);
+                        }
+                    });
                     toComplete++;
                 }
             }

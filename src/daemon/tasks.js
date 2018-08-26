@@ -248,15 +248,43 @@ class Media {
             : facetQueueMap[refSource.type]), facet.facetId, null, this.id);
         this.setStatus(MediaStatus.PENDING);
     }
-    stop(finished = false) {
+    stop(finished = false, done) {
         if (this.status !== MediaStatus.ACTIVE && this.status !== MediaStatus.FINISHED) {
             return;
         }
+        const hasOutstream = !!this.outStream;
         if (this.request) {
             this.request.stop();
             this.request = null;
         }
-        this.setStatus(MediaStatus.PAUSED);
+        if (hasOutstream) {
+            this.outStream.write(utils_1.bufferConcat(this.buffers));
+            this.outStream.end(() => {
+                done(null);
+            });
+            this.outStream = null;
+        }
+        this.bytes += this.bufferedBytes;
+        this.buffers = [];
+        this.bufferedBytes = 0;
+        // Prevent any further writes or modifications from a MediaStream
+        this.totalAttempts++;
+        if (this.status === MediaStatus.ACTIVE) {
+            const stream = this.getSource();
+            this.decreaseMirrorConn(stream);
+        }
+        // FIXME: This conditional doesn't account for most possibilities yet
+        if (finished) {
+            this.setStatus(MediaStatus.FINISHED);
+        }
+        else {
+            this.setStatus(MediaStatus.PAUSED);
+        }
+        if (!hasOutstream) {
+            setTimeout(() => {
+                done(null);
+            }, 0);
+        }
     }
     nextSource() {
         // Reset stream data
@@ -371,7 +399,7 @@ class Media {
     reattemptSources(skip = false) {
         const media = this;
         const task = media.getTask();
-        media.totalAttempts++;
+        const attempt = ++media.totalAttempts;
         console.log("ANV Stream Error for source #" + media.source + " in Media #" + media.id + " - " + media.fileName);
         if (skip || media.sourceAttempts >= state_1.state.maxSourceRetries) {
             // Give up
@@ -381,7 +409,7 @@ class Media {
             this.decreaseMirrorConn(this.getSource());
             // Go to the next source
             this.nextSource();
-            // Reset media properties
+            // Reset active media properties
             this.bytes = 0;
             this.bufferedBytes = 0;
             this.size = null;
@@ -402,7 +430,9 @@ class Media {
             if (newSource) {
                 // FIXME: Use queue here or smth
                 setTimeout(() => {
-                    media.resolveSource(newSource);
+                    if (this.totalAttempts === attempt) {
+                        media.resolveSource(newSource);
+                    }
                 }, 1000);
             }
             else {
@@ -508,6 +538,7 @@ class MediaStream extends stream_1.Writable {
         return this.media.bytes;
     }
     error(err) {
+        // FIXME: Report err
         if (this.mediaAttempt === this.media.totalAttempts) {
             this.end();
             this.media.reattemptSources();

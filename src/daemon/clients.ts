@@ -66,6 +66,7 @@ export const instructions = {
                 const media = new Media(source.number, fileName, task.list, task.id);
                 task.list.push(media);
 
+                // FIXME: Why this IIFE?
                 void function addSources(media: Media, source: MediaSourceItem | MediaSourceSubItem) {
                   switch (source.type) {
                     case "mediasource":
@@ -174,18 +175,20 @@ export const instructions = {
 
             // Deserialize
             const readyTask = deserialize(task, media, mediaSources);
-            readyTask.task.metaFile = metaPath;
-            readyTask.task.dlDir = readyTask.task.settings.dlPath + path.sep + getSimpleName(readyTask.task.title);
-            readyTask.task.loaded = true;
+            readyTask.metaFile = metaPath;
+            readyTask.dlDir = readyTask.settings.dlPath + path.sep + getSimpleName(readyTask.title);
+            readyTask.loaded = true;
 
-            for (const media of readyTask.task.list) {
+            for (const media of readyTask.list) {
               if (media.status === MediaStatus.FINISHED) {
-                readyTask.task.finishedFromStart++;
+                readyTask.finishedFromStart++;
               }
             }
 
-            // FIXME: Remove redundant object wrapper
-            done(null, readyTask.task.id);
+            // Update dlPath setting
+            readyTask.settings.dlPath = path.dirname(localPath);
+
+            done(null, readyTask.id);
           }
         }
       });
@@ -227,31 +230,13 @@ export const instructions = {
 
       for (const media of task.list) {
         if (media.status === MediaStatus.ACTIVE) {
-          media.setStatus(MediaStatus.PAUSED);
+          media.stop(false, () => {
+            finished++;
 
-          if (media.request) {
-            media.request.stop();
-          }
-
-          if (media.outStream) {
-            media.outStream.write(bufferConcat(media.buffers));
-            media.outStream.end(() => {
-              finished++;
-
-              if (finished === toComplete) {
-                done(null);
-              }
-            });
-
-            media.outStream = null;
-          }
-
-          media.bytes += media.bufferedBytes;
-          media.buffers = [];
-          media.bufferedBytes = 0;
-
-          const stream = media.getSource();
-          media.decreaseMirrorConn(stream);
+            if (finished === toComplete) {
+              done(null);
+            }
+          });
 
           toComplete++;
         }

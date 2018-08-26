@@ -158,10 +158,7 @@ function deserialize(taskSrc, mediaList, mediaSourcesList) {
         }
         task.list.push(media);
     }
-    return {
-        task,
-        mediaSources: mediaSourcesDeserialized,
-    };
+    return task;
 }
 exports.deserialize = deserialize;
 function buildShapeCache(shape) {

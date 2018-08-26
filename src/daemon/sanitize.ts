@@ -1,3 +1,5 @@
+// Sanitize modules
+
 import {type, deepCopy} from "./utils";
 import {
   ProviderFacet as Provider,
@@ -152,6 +154,7 @@ export class sanitize {
       mediaList: [true, "function:1"],
       mediaSource: [false, "function:2"],
       search: [false, "function:1"],
+      id: [false, "function:1"],
     });
 
     if (Array.isArray(output.hosts)) {
@@ -200,7 +203,7 @@ export class sanitize {
       }, {}],
       streamResolver: [false, "string", "basic"],
       forceReresolveParent: [false, "boolean", false],
-      reresolveDelay: [false, "number", 1000 * 60 * 60 /* 1 hour in ms*/], 
+      reresolveDelay: [false, "number", 1000 * 60 * 60 /* 1 hour in ms*/],
       hosts: [true, "array"],
       validUrl: [true, "function:1"],
       tiers: [false, "array", []],

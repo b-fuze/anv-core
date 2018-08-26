@@ -185,12 +185,7 @@ export function serialize(task: Task) {
   return sTask;
 }
 
-export interface DeserializedTask {
-  task: Task;
-  mediaSources: MediaSource[];
-}
-
-export function deserialize(taskSrc: TaskSerialized, mediaList: MediaSerialized[], mediaSourcesList: MediaSourceSerialized[]): DeserializedTask {
+export function deserialize(taskSrc: TaskSerialized, mediaList: MediaSerialized[], mediaSourcesList: MediaSourceSerialized[]): Task {
   const task = new Task(taskSrc.url, [], taskSrc.providerId, taskSrc.provider);
 
   // Copy props
@@ -252,10 +247,7 @@ export function deserialize(taskSrc: TaskSerialized, mediaList: MediaSerialized[
     task.list.push(media);
   }
 
-  return {
-    task,
-    mediaSources: mediaSourcesDeserialized,
-  };
+  return task;
 }
 
 type ShapeCache = [string, ShapeType, string | ((value: any) => boolean), boolean][];
