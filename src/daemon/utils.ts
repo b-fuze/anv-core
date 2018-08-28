@@ -22,10 +22,19 @@ export function type(value: any): JSType {
   }
 }
 
-export function deepCopy<InType = any>(obj: InType): InType {
-  const copy: {
+export function deepCopy<InType = any>(obj: InType, deepArray = true): InType {
+  let copy: {
     [key: string]: any;
   } = {};
+
+  switch (obj.constructor) {
+    case Date:
+      copy = <any> new Date((<any> obj).getTime());
+      break;
+    case RegExp:
+      copy = new RegExp((<any> obj).source, (<any> obj).pattern);
+      break;
+  }
 
   for (const key in obj) {
     if (obj.hasOwnProperty(key)) {
@@ -33,10 +42,56 @@ export function deepCopy<InType = any>(obj: InType): InType {
 
       switch (type(value)) {
         case "object":
-          copy[key] = deepCopy(value);
+          copy[key] = deepCopy(value, deepArray);
           break;
         case "array":
-          copy[key] = value.slice();
+          if (deepArray) {
+            const backlog: [any[], any[], number][] = [
+              [value, copy[key] = new Array(value.length), 0],
+            ];
+            let currentMeta = backlog[0];
+            let current: any[] = currentMeta[0];
+            let copyArr: any[] = currentMeta[1];
+
+            arrayLoop:
+            while (true) {
+              for (let i=currentMeta[2]; i<current.length; i++) {
+                const item = current[i];
+
+                switch (type(item)) {
+                  case "object":
+                    copyArr[i] = deepCopy(item, deepArray);
+                    break;
+                  case "array":
+                    currentMeta[2] = i + 1;
+
+                    const newArr = new Array(item.length);
+                    backlog.push(currentMeta = [item, newArr, 0]);
+                    copyArr[i] = newArr;
+
+                    current = item;
+                    copyArr = newArr;
+                    continue arrayLoop;
+                  default:
+                    copyArr[i] = item;
+                }
+              }
+
+              backlog.pop();
+
+              if (backlog.length) {
+                currentMeta = backlog[backlog.length - 1];
+
+                current = currentMeta[0];
+                copyArr = currentMeta[1];
+              } else {
+                break arrayLoop;
+              }
+            }
+          } else {
+            copy[key] = value.slice();
+          }
+          break;
         default:
           copy[key] = value;
       }
