@@ -1,3 +1,4 @@
+import * as ws from "ws";
 import {instruction as clientInstruction} from "./clients";
 
 export const connections: Connection[] = [];
