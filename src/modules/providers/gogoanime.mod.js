@@ -19,13 +19,13 @@ register("provider", {
     mediaSource: "cfdom",
   },
   hosts: [
-    /^www\d*\.gogoanime\.se$/,
-    /^gogoanime\.sh$/,
+    /^(www\d*\.)?gogoanime\.se$/,
+    /^(www\d*\.)?gogoanime\.sh$/,
   ],
   validUrl(url, list) {
     if (list) {
       // https://www2.gogoanime.se/category/boku-no-hero-academia
-      return /^https?:\/\/(www\d*\.gogoanime\.se|gogoanime\.sh)\/+category\/+[a-zA-Z\d-]+\/*$/.test(url);
+      return /^https?:\/\/(www\d*\.)?(gogoanime\.se|gogoanime\.sh)\/+category\/+[a-zA-Z\d-]+\/*$/.test(url);
     } else {
       // Don't match
       // https://www3.gogoanime.se/anime-list.html
@@ -33,7 +33,7 @@ register("provider", {
       // Etc...
 
       // https://www2.gogoanime.se/boku-no-hero-academia-episode-1
-      return /^https?:\/\/(www\d*\.gogoanime\.se|gogoanime\.sh)\/+(?!category\/+|(anime-list|new-season|anime-movies|popular|login|register|search)\.html)[a-zA-Z\d-]+$/.test(url);
+      return /^https?:\/\/(www\d*\.)?(gogoanime\.se|gogoanime\.sh)\/+(?!category\/+|(anime-list|new-season|anime-movies|popular|login|register|search)\.html)[a-zA-Z\d-]+$/.test(url);
     }
   },
   tiers: [
