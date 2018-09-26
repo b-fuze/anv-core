@@ -113,32 +113,35 @@ function clock() {
         if (intervals[state_1.state.tickDelay]) {
             // Iterate active media
             for (const media of tasks_1.crud.getActiveMedia()) {
-                if (media.outStream && media.request) {
-                    const now = Date.now();
-                    const dur = now - media.lastUpdate;
-                    const bytes = media.bufferedBytes;
-                    media.speed = Math.floor((1000 / dur) * bytes);
-                    // TODO: Check if the stream's size actually satifies the set size
-                    if (media.bufferStream.finished) {
-                        media.request = null;
-                        media.setStatus(tasks_1.MediaStatus.FINISHED);
-                        increaseBacklog();
-                        media.outStream.write(utils_1.bufferConcat(media.buffers), decreaseBacklog);
-                        media.buffers = [];
-                        media.bufferedBytes = 0;
-                        media.outStream.end();
-                        media.outStream = null;
-                        // FIXME: Tidy this up
-                        const stream = media.getSource();
-                        media.decreaseMirrorConn(stream);
-                    }
-                    else {
-                        increaseBacklog();
-                        media.outStream.write(utils_1.bufferConcat(media.buffers), decreaseBacklog);
-                        media.bytes += bytes;
-                        media.buffers = [];
-                        media.bufferedBytes = 0;
-                        media.lastUpdate = Date.now();
+                if (media.request) {
+                    if (!media.streamResolver.external && media.outStream) {
+                        // The stream resolver is internal, proceed to calculate speed, etc
+                        const now = Date.now();
+                        const dur = now - media.lastUpdate;
+                        const bytes = media.bufferedBytes;
+                        media.speed = Math.floor((1000 / dur) * bytes);
+                        // TODO: Check if the stream's size actually satifies the set size
+                        if (media.bufferStream.finished) {
+                            media.request = null;
+                            media.setStatus(tasks_1.MediaStatus.FINISHED);
+                            increaseBacklog();
+                            media.outStream.write(utils_1.bufferConcat(media.buffers), decreaseBacklog);
+                            media.buffers = [];
+                            media.bufferedBytes = 0;
+                            media.outStream.end();
+                            media.outStream = null;
+                            // FIXME: Tidy this up
+                            const stream = media.getSource();
+                            media.decreaseMirrorConn(stream);
+                        }
+                        else {
+                            increaseBacklog();
+                            media.outStream.write(utils_1.bufferConcat(media.buffers), decreaseBacklog);
+                            media.bytes += bytes;
+                            media.buffers = [];
+                            media.bufferedBytes = 0;
+                            media.lastUpdate = Date.now();
+                        }
                     }
                 }
             }

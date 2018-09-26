@@ -132,37 +132,40 @@ export function clock() {
     if (intervals[state.tickDelay]) {
       // Iterate active media
       for (const media of crud.getActiveMedia()) {
-        if (media.outStream && media.request) {
-          const now = Date.now();
-          const dur = now - media.lastUpdate;
-          const bytes = media.bufferedBytes;
+        if (media.request) {
+          if (!media.streamResolver.external && media.outStream) {
+            // The stream resolver is internal, proceed to calculate speed, etc
+            const now = Date.now();
+            const dur = now - media.lastUpdate;
+            const bytes = media.bufferedBytes;
 
-          media.speed = Math.floor((1000 / dur) * bytes);
+            media.speed = Math.floor((1000 / dur) * bytes);
 
-          // TODO: Check if the stream's size actually satifies the set size
-          if (media.bufferStream.finished) {
-            media.request = null;
-            media.setStatus(MediaStatus.FINISHED);
+            // TODO: Check if the stream's size actually satifies the set size
+            if (media.bufferStream.finished) {
+              media.request = null;
+              media.setStatus(MediaStatus.FINISHED);
 
-            increaseBacklog();
-            media.outStream.write(bufferConcat(media.buffers), decreaseBacklog);
+              increaseBacklog();
+              media.outStream.write(bufferConcat(media.buffers), decreaseBacklog);
 
-            media.buffers = [];
-            media.bufferedBytes = 0;
-            media.outStream.end();
-            media.outStream = null;
+              media.buffers = [];
+              media.bufferedBytes = 0;
+              media.outStream.end();
+              media.outStream = null;
 
-            // FIXME: Tidy this up
-            const stream = media.getSource();
-            media.decreaseMirrorConn(stream);
-          } else {
-            increaseBacklog();
-            media.outStream.write(bufferConcat(media.buffers), decreaseBacklog);
+              // FIXME: Tidy this up
+              const stream = media.getSource();
+              media.decreaseMirrorConn(stream);
+            } else {
+              increaseBacklog();
+              media.outStream.write(bufferConcat(media.buffers), decreaseBacklog);
 
-            media.bytes += bytes;
-            media.buffers = [];
-            media.bufferedBytes = 0;
-            media.lastUpdate = Date.now();
+              media.bytes += bytes;
+              media.buffers = [];
+              media.bufferedBytes = 0;
+              media.lastUpdate = Date.now();
+            }
           }
         }
       }

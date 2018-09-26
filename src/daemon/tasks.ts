@@ -212,6 +212,7 @@ class Media {
   streamData: {[k: string]: any} = {};
   emptyStreamData = true;
 
+  streamResolver: StreamResolver = null;
   outStream: Writable;
   bufferStream: MediaStream;
   buffers: Buffer[] = [];
@@ -346,12 +347,12 @@ class Media {
       return;
     }
 
-    const hasOutstream = !!this.outStream;
     if (this.request) {
       this.request.stop();
       this.request = null;
     }
 
+    const hasOutstream = !!this.outStream;
     if (hasOutstream) {
       this.outStream.write(bufferConcat(this.buffers));
       this.outStream.end(() => {
@@ -628,11 +629,10 @@ class Media {
       }
     }
 
-    const sresolver: StreamResolver = getFacetById("streamresolver", stream.facetId);
+    const sresolver: StreamResolver = this.streamResolver = getFacetById("streamresolver", stream.facetId);
     const task = this.getTask();
-    const out = this.bufferStream = new MediaStream(this);
 
-    if (!this.outStream) {
+    if (!this.outStream && !sresolver.external) {
       this.outStream = fs.createWriteStream(this.getFilePath(), {
         flags: "a",
         encoding: "binary",
@@ -645,9 +645,45 @@ class Media {
     }
 
     this.lastUpdate = Date.now();
-    this.request = sresolver.resolve(stream.url, this.bytes, out, null, stream.options || {});
+
+    if (sresolver.external) {
+      // External stream resolver
+      this.outStream = null;
+      this.bufferStream = null;
+
+      const attempt = this.totalAttempts;
+      const media = this;
+
+      function info({size, bytes, speed, finished}: {size: number, bytes: number, speed: number, finished: boolean}) {
+        if (attempt === media.totalAttempts) {
+          if (typeof size === "number") {
+            media.size = size;
+          }
+
+          if (typeof bytes === "number") {
+            media.bytes = bytes;
+          }
+
+          if (typeof speed === "number") {
+            media.speed = speed;
+          }
+
+          if (finished) {
+            media.stop(true);
+          }
+        }
+      }
+
+      this.request = sresolver.resolve(stream.url, this.bytes, this.getFilePath(), info, stream.options || {});
+    } else {
+      // Internal stream resolver
+      const out = this.bufferStream = new MediaStream(this);
+      this.request = sresolver.resolve(stream.url, this.bytes, out, null, stream.options || {});
+    }
+
     sresolver.lastUse = Date.now();
 
+    // Increase parent source connection count for connection throttling
     if (parentSource && !this.sourceAttempts) {
       parentSource.connectionCount++;
     }

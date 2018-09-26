@@ -156,6 +156,7 @@ class Media {
         this.request = null;
         this.streamData = {};
         this.emptyStreamData = true;
+        this.streamResolver = null;
         this.buffers = [];
         this.bufferedBytes = 0; // Cleared every tick, used to calculate download speed
         this.lastUpdate = 0;
@@ -252,11 +253,11 @@ class Media {
         if (this.status !== MediaStatus.ACTIVE && this.status !== MediaStatus.FINISHED) {
             return;
         }
-        const hasOutstream = !!this.outStream;
         if (this.request) {
             this.request.stop();
             this.request = null;
         }
+        const hasOutstream = !!this.outStream;
         if (hasOutstream) {
             this.outStream.write(utils_1.bufferConcat(this.buffers));
             this.outStream.end(() => {
@@ -486,10 +487,9 @@ class Media {
                 }
             }
         }
-        const sresolver = facets_1.getFacetById("streamresolver", stream.facetId);
+        const sresolver = this.streamResolver = facets_1.getFacetById("streamresolver", stream.facetId);
         const task = this.getTask();
-        const out = this.bufferStream = new MediaStream(this);
-        if (!this.outStream) {
+        if (!this.outStream && !sresolver.external) {
             this.outStream = fs.createWriteStream(this.getFilePath(), {
                 flags: "a",
                 encoding: "binary",
@@ -500,8 +500,37 @@ class Media {
             this.emptyStreamData = false;
         }
         this.lastUpdate = Date.now();
-        this.request = sresolver.resolve(stream.url, this.bytes, out, null, stream.options || {});
+        if (sresolver.external) {
+            // External stream resolver
+            this.outStream = null;
+            this.bufferStream = null;
+            const attempt = this.totalAttempts;
+            const media = this;
+            function info({ size, bytes, speed, finished }) {
+                if (attempt === media.totalAttempts) {
+                    if (typeof size === "number") {
+                        media.size = size;
+                    }
+                    if (typeof bytes === "number") {
+                        media.bytes = bytes;
+                    }
+                    if (typeof speed === "number") {
+                        media.speed = speed;
+                    }
+                    if (finished) {
+                        media.stop(true);
+                    }
+                }
+            }
+            this.request = sresolver.resolve(stream.url, this.bytes, this.getFilePath(), info, stream.options || {});
+        }
+        else {
+            // Internal stream resolver
+            const out = this.bufferStream = new MediaStream(this);
+            this.request = sresolver.resolve(stream.url, this.bytes, out, null, stream.options || {});
+        }
         sresolver.lastUse = Date.now();
+        // Increase parent source connection count for connection throttling
         if (parentSource && !this.sourceAttempts) {
             parentSource.connectionCount++;
         }
