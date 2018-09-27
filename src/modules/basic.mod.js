@@ -9,7 +9,7 @@ register("genericresolver", {
   description: "Basic ANV generic request resolver",
   weight: 0,
   resolve(url, done, optionsObj) {
-    let options = optionsObj;
+    let options = optionsObj || {};
 
     request({
       url,
