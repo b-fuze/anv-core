@@ -15,6 +15,7 @@ export const state = {
   useGlobalPersistentStateStore: false,
   tickDelay: 1000, // This shouldn't be changeable
   taskFairness: true,
+  moduleFollowSymlinks: false,
 
   task: {
     dlPath: null as string,

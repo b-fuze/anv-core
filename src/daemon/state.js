@@ -15,6 +15,7 @@ exports.state = {
     useGlobalPersistentStateStore: false,
     tickDelay: 1000,
     taskFairness: true,
+    moduleFollowSymlinks: false,
     task: {
         dlPath: null,
         minimalFileName: true,

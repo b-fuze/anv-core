@@ -12,6 +12,7 @@ const path = __importStar(require("path"));
 const anv_1 = require("anv");
 const sanitize_1 = require("./sanitize");
 const facets_1 = require("./facets");
+const state_1 = require("./state");
 let curModule = null;
 exports.modules = {};
 exports.validModule = /[a-zA-Z\d-]\.mod\.js/;
@@ -55,9 +56,10 @@ anv_1.setInstance(class {
 });
 function loadModules(curPath, recursive = false, base = curPath, first = true) {
     const files = fs.readdirSync(curPath);
+    const syncFn = state_1.state.moduleFollowSymlinks ? fs.statSync : fs.lstatSync;
     for (const file of files) {
         const filePath = curPath + "/" + file;
-        const stat = fs.statSync(filePath);
+        const stat = syncFn(filePath);
         if (stat.isDirectory()) {
             if (recursive) {
                 loadModules(filePath, recursive, base);

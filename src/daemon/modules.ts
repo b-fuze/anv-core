@@ -3,6 +3,7 @@ import * as path from "path";
 import {setInstance, RegisterFacetTypeMap} from "anv";
 import {sanitize} from "./sanitize";
 import {Mirror, registerFacet, getFacet, getFacetById, GenericResolver} from "./facets";
+import {state} from "./state";
 
 let curModule: string = null;
 
@@ -60,10 +61,11 @@ setInstance(class {
 export
 function loadModules(curPath: string, recursive: boolean = false, base: string = curPath, first: boolean = true) {
   const files = fs.readdirSync(curPath);
+  const syncFn = state.moduleFollowSymlinks ? fs.statSync : fs.lstatSync;
 
   for (const file of files) {
     const filePath = curPath + "/" + file;
-    const stat = fs.statSync(filePath);
+    const stat = syncFn(filePath);
 
     if (stat.isDirectory()) {
       if (recursive) {

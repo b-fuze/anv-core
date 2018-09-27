@@ -25,6 +25,10 @@ if (args.v || args.verbose) {
 }
 // Change to current dir
 process.chdir(path.dirname(process.argv[1]));
+// Follow symlinks when loading modules
+if (!!args["follow-symlinks"] || !!args.s) {
+    state_1.state.moduleFollowSymlinks = true;
+}
 // Load modules
 modules_1.loadModules("../modules", true);
 if (args.modules) {
