@@ -356,7 +356,7 @@ class Media {
     if (hasOutstream) {
       this.outStream.write(bufferConcat(this.buffers));
       this.outStream.end(() => {
-        done(null);
+        done && done(null);
       });
 
       this.outStream = null;
@@ -381,7 +381,7 @@ class Media {
       this.setStatus(MediaStatus.PAUSED);
     }
 
-    if (!hasOutstream) {
+    if (!hasOutstream && done) {
       setTimeout(() => {
         done(null);
       }, 0);
