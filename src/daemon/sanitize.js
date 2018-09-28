@@ -213,7 +213,17 @@ class sanitize {
             name: [true, "string"],
             description: [false, "string", null],
             resolve: [true, "function:5"],
+            weight: [false, "number", 0],
+            external: [false, "boolean", false],
         });
+        if (data.streamData) {
+            if (typeof data.streamData === "object") {
+                validData.streamData = data.streamData;
+            }
+            else {
+                errors.push(`Wrong type for "streamData", should an object`);
+            }
+        }
         validationErrors = validationErrors.concat(errors);
         return {
             errors: validationErrors,
