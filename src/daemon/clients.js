@@ -51,9 +51,14 @@ exports.instructions = {
                             for (const source of metadata.sources) {
                                 let facet;
                                 const fileName = fileNameBase
-                                    + (task.settings.numberPad
-                                        ? utils_1.getPadding(source.number, Math.max(Math.pow(10, Math.max(0, task.settings.padMinLength - 1)), metadata.sources.length))
-                                        : source.number)
+                                    + (source.number !== undefined
+                                        ? (task.settings.numberPad
+                                            ? utils_1.getPadding(source.number, Math.max(Math.pow(10, Math.max(0, task.settings.padMinLength - 1)), metadata.sources.length))
+                                            : source.number)
+                                        : "")
+                                    + (source.title !== undefined
+                                        ? " " + source.title
+                                        : "")
                                     + "." + source.fileExtension;
                                 const media = new tasks_1.Media(source.number, fileName, task.list, task.id);
                                 task.list.push(media);
