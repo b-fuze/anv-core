@@ -78,6 +78,10 @@ export function queueState(facet: keyof QueueFacet, facetId: string, queueId: nu
           : offset);
 }
 
+export function queueFacetState(facet: keyof QueueFacet, facetId: string) {
+  return (queue[facet] || {})[facetId] || null;
+}
+
 export function advanceQueue(facet: keyof QueueFacet, facetId: string, onlyOpen = false, open = true, ready = false) {
   const facetQueue = queue[facet][facetId];
 

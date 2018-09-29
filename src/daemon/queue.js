@@ -51,6 +51,10 @@ function queueState(facet, facetId, queueId) {
         : offset);
 }
 exports.queueState = queueState;
+function queueFacetState(facet, facetId) {
+    return (queue[facet] || {})[facetId] || null;
+}
+exports.queueFacetState = queueFacetState;
 function advanceQueue(facet, facetId, onlyOpen = false, open = true, ready = false) {
     const facetQueue = queue[facet][facetId];
     if (!onlyOpen) {

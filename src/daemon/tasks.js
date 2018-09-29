@@ -458,6 +458,10 @@ class Media {
             const facet = facets_1.getFacetById("mirror", mirror.facetId);
             // Mark mirror facet as done
             facet.connectionCount--;
+            // Advance queue if nothing's actually changed
+            if (facet.connectionCount === queue_1.queueFacetState("mirrorstream", facet.facetId).state) {
+                queue_1.advanceQueue("mirrorstream", facet.facetId, false, true, true);
+            }
         }
     }
     startStream(stream) {

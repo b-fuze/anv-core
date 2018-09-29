@@ -18,7 +18,7 @@ import {
 import {rankItems} from "./tiers";
 import {resolveProviderSource, resolveMirror} from "./resolve";
 import {state, tmpState} from "./state";
-import {queueAdd, QueueFacet} from "./queue";
+import {queueAdd, advanceQueue, queueFacetState, QueueFacet} from "./queue";
 import {deepCopy} from "./utils";
 
 const tasks: Task[] = [null];
@@ -592,6 +592,11 @@ class Media {
 
       // Mark mirror facet as done
       facet.connectionCount--;
+
+      // Advance queue if nothing's actually changed
+      if (facet.connectionCount === queueFacetState("mirrorstream", facet.facetId).state) {
+        advanceQueue("mirrorstream", facet.facetId, false, true, true);
+      }
     }
   }
 
