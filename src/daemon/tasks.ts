@@ -348,7 +348,12 @@ class Media {
     }
 
     if (this.request) {
-      this.request.stop();
+      try {
+        this.request.stop();
+      } catch (e) {
+        // FIXME: Log this
+      }
+
       this.request = null;
     }
 
@@ -594,7 +599,9 @@ class Media {
       facet.connectionCount--;
 
       // Advance queue if nothing's actually changed
-      if (facet.connectionCount === queueFacetState("mirrorstream", facet.facetId).state) {
+      // TODO: Find similar issues to this
+      let mstream = queueFacetState("mirrorstream", facet.facetId);
+      if (mstream && facet.connectionCount === mstream.state) {
         advanceQueue("mirrorstream", facet.facetId, false, true, true);
       }
     }
@@ -650,6 +657,7 @@ class Media {
     }
 
     this.lastUpdate = Date.now();
+    let error = false;
 
     if (sresolver.external) {
       // External stream resolver
@@ -679,18 +687,36 @@ class Media {
         }
       }
 
-      this.request = sresolver.resolve(stream.url, this.bytes, this.getFilePath(), info, stream.options || {});
+      try {
+        this.request = sresolver.resolve(stream.url, this.bytes, this.getFilePath(), info, stream.options || {});
+      } catch (e) {
+        // FIXME: Error should be logged
+        error = true;
+      }
     } else {
       // Internal stream resolver
       const out = this.bufferStream = new MediaStream(this);
-      this.request = sresolver.resolve(stream.url, this.bytes, out, null, stream.options || {});
+
+      try {
+        this.request = sresolver.resolve(stream.url, this.bytes, out, null, stream.options || {});
+      } catch (e) {
+        // FIXME: Error should be logged
+        error = true;
+      }
     }
 
     sresolver.lastUse = Date.now();
 
-    // Increase parent source connection count for connection throttling
-    if (parentSource && !this.sourceAttempts) {
-      parentSource.connectionCount++;
+    if (error) {
+      // FIXME: This op can be async and should be tracked
+      this.stop(false);
+      this.setStatus(MediaStatus.ACTIVE);
+      this.reattemptSources(true);
+    } else {
+      // Increase parent source connection count for connection throttling
+      if (parentSource && !this.sourceAttempts) {
+        parentSource.connectionCount++;
+      }
     }
   }
 
