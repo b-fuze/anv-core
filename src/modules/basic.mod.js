@@ -10,12 +10,24 @@ register("genericresolver", {
   weight: 0,
   resolve(url, done, optionsObj) {
     let options = optionsObj || {};
+    let jar;
+
+    if (options.cookies) {
+      jar = request.jar();
+
+      for (const cookieStr of options.cookies) {
+        jar.setCookie(cookieStr, url);
+      }
+    }
 
     request({
       url,
+      // @ts-ignore
+      headers: options.headers ? options.headers : {},
       agentOptions: {
         rejectUnauthorized: options.hasOwnProperty("noCheckCertificate") ? !options.noCheckCertificate : true,
-      }
+      },
+      jar,
     }, (err, res, body) => {
       if (!err) {
         done(null, body);
