@@ -198,9 +198,11 @@ export class sanitize {
       delay: [false, ["number", "function:2"], 500],
       streamDelay: [false, ["number", "function:2"], 500],
       maxConnections: [false, "number", 0],
+      backtrack: [false, "function:1", null],
       resolver: [false, "string", "basic"],
       resolverOptions: [false, {
-        noCheckCertificate: [false, "boolean", false]
+        noCheckCertificate: [false, "boolean", false],
+        cookies: [false, "array", null],
       }, {}],
       streamResolver: [false, "string", "basic"],
       forceReresolveParent: [false, "boolean", false],
@@ -217,6 +219,10 @@ export class sanitize {
           errors.push(`Wrong item types in array "host", should be "string" or "array"`);
         }
       }
+    }
+
+    if (data.resolverOptions && type(data.resolverOptions.headers) === "object") {
+      (output.resolverOptions || (output.resolverOptions = {})).headers = data.resolverOptions.headers;
     }
 
     validationErrors = validationErrors.concat(errors);

@@ -84,7 +84,11 @@ register("streamresolver", {
           out.setSize(+size);
         }
       } else {
-        out.error("Status code: " + res.statusCode);
+        if (out.shouldBacktrack(res)) {
+          out.backtrack();
+        } else {
+          out.error("Status code: " + res.statusCode);
+        }
       }
     })
     .on("end", arg => {

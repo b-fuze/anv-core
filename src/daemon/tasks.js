@@ -435,6 +435,41 @@ class Media {
                 break;
         }
     }
+    removeSource(curSource, newSource = 0) {
+        const source = this.sources[curSource];
+        if (source) {
+            // Remove current source
+            this.sources.splice(curSource, 1);
+            // FIXME: Check that `newSource` exists
+            this.source = newSource;
+        }
+        else {
+            // FIXME: Use proper error loggin mechanism
+            console.log("ANV: Error removing source #" + curSource + " media #" + this.id + " has no such source");
+        }
+    }
+    backtrack() {
+        console.log("ANV: Backtracking media #" + this.id + " - " + this.fileName);
+        const source = this.getSource();
+        const parentSource = source.parent && exports.crud.getMediaSource(source.parent);
+        this.totalAttempts++;
+        if (parentSource && parentSource.type === MediaSourceType.Mirror) {
+            this.bufferedBytes = 0;
+            this.buffers = [];
+            this.speed = 0;
+            // Get relative source index of parent source
+            const parentSourceIndex = this.sources.indexOf(parentSource);
+            this.removeSource(this.source, parentSourceIndex);
+            // Start back on parent source
+            this.queueId = null;
+            this.setStatus(MediaStatus.PENDING);
+            this.start();
+        }
+        else {
+            // FIXME: Do something more appropriate?
+            this.stop(true);
+        }
+    }
     // FIXME: Tidy this up
     reattemptSources(skip = false) {
         const media = this;
@@ -645,6 +680,22 @@ class MediaStream extends stream_1.Writable {
         if (this.mediaAttempt === this.media.totalAttempts) {
             this.end();
             this.media.reattemptSources();
+        }
+    }
+    shouldBacktrack(data) {
+        if (this.mediaAttempt === this.media.totalAttempts) {
+            const source = this.media.getSource();
+            const parentSource = source.parent && exports.crud.getMediaSource(source.parent);
+            if (parentSource && parentSource.type === MediaSourceType.Mirror) {
+                const facet = facets_1.getFacetById(parentSource.facetType, parentSource.facetId);
+                return facet.backtrack ? facet.backtrack(data) : false;
+            }
+        }
+        return false;
+    }
+    backtrack() {
+        if (this.mediaAttempt === this.media.totalAttempts) {
+            this.media.backtrack();
         }
     }
     _write(chunk, encoding, callback) {
