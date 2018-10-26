@@ -18,7 +18,7 @@ import {
 import {rankItems} from "./tiers";
 import {resolveProviderSource, resolveMirror} from "./resolve";
 import {state, tmpState} from "./state";
-import {queueAdd, advanceQueue, queueFacetState, QueueFacet} from "./queue";
+import {queueAdd, advanceQueue, queueState, QueueState, queueFacetState, QueueFacet} from "./queue";
 import {deepCopy} from "./utils";
 
 const tasks: Task[] = [null];
@@ -219,7 +219,10 @@ class Media {
   bufferedBytes: number = 0; // Cleared every tick, used to calculate download speed
   lastUpdate: number = 0;
   speed: number = 0;
+
   queueId: number = null;
+  queueFacet: keyof QueueFacet = null;
+  queueFacetId: string;
 
   constructor(
     title: string,
@@ -255,6 +258,7 @@ class Media {
         }
       });
 
+      // Compare old status to new status
       if (compare[0] !== compare[1]) {
         tmpState.currentDl += compare[1];
         task.currentDl += compare[1];
@@ -300,6 +304,7 @@ class Media {
     let streamChild = false;
 
     // Remap stream sources to their parents if any
+    // TODO: DRY this
     if (source.type === MediaSourceType.Stream) {
       streamChild = true;
 
@@ -329,11 +334,14 @@ class Media {
       mirror: "mirrorstream",
     }
 
+    const queueFacet = <keyof QueueFacet> (streamChild
+                         ? streamQueueMap[refSource.type]
+                         : facetQueueMap[refSource.type]);
     // Add to queue
+    this.queueFacet = queueFacet;
+    this.queueFacetId = facet.facetId;
     this.queueId = queueAdd(
-      <keyof QueueFacet> (streamChild
-                           ? streamQueueMap[refSource.type]
-                           : facetQueueMap[refSource.type]),
+      queueFacet,
       facet.facetId,
       null,
       this.id
@@ -514,6 +522,8 @@ class Media {
             // Reresolve
             this.nextSource();
             this.queueId = queueAdd("mirrorstream", mirror.facetId, null, this.id);
+            this.queueFacet = "mirrorstream";
+            this.queueFacetId = mirror.facetId;
             this.setStatus(MediaStatus.PENDING);
           }
         });
@@ -610,33 +620,41 @@ class Media {
   startStream(stream: MediaSourceStream) {
     let parentSource: Mirror;
 
-    if (!state.ignoreMaxConnections && stream.parentType === MediaSourceType.Mirror) {
-      const parent = mediaSources[stream.parent];
-      const facet = parentSource = getFacetById("mirror", parent.facetId);
+    if (stream.parentType === MediaSourceType.Mirror) {
+      if (!state.ignoreMaxConnections) {
+        const parent = mediaSources[stream.parent];
+        const facet = parentSource = getFacetById("mirror", parent.facetId);
 
-      // Are there too many connections being used now?
-      if (facet.maxConnections && facet.connectionCount === facet.maxConnections) {
-        // Can we skip and are there are any more sources to use? FIXME: Check the following sources aren't also the same mirror
-        if (state.skipOccupiedMirrors && this.source + 1 < this.sources.length) {
-          this.nextSource();
+        // Are there too many connections being used now?
+        if (facet.maxConnections && facet.connectionCount >= facet.maxConnections) {
+          // Can we skip and are there are any more sources to use? FIXME: Check the following sources aren't also the same mirror
+          if (state.skipOccupiedMirrors && this.source + 1 < this.sources.length) {
+            this.nextSource();
 
-          const source = this.getSource();
-          const facet = getFacetById(<keyof FacetStore> mediaSourceFacetMap[source.type], source.facetId);
+            const source = this.getSource();
+            const facet = getFacetById(<keyof FacetStore> mediaSourceFacetMap[source.type], source.facetId);
 
-          const streamFacetQueueMap = <{
-            [facet: string]: string
-          }> {
-            // FIXME: No such thing as "providerstream"
-            provider: "providerstream",
-            mirror: "mirrorstream",
-          };
+            const streamFacetQueueMap = <{
+              [facet: string]: string
+            }> {
+              // FIXME: No such thing as "providerstream"
+              provider: "providerstream",
+              mirror: "mirrorstream",
+            };
 
-          // Add to queue
-          this.queueId = queueAdd(<keyof QueueFacet> streamFacetQueueMap[source.type], facet.facetId, null, this.id);
-          return this.setStatus(MediaStatus.PENDING);
-        } else {
-          // Just wait
-          return this.setStatus(MediaStatus.PENDING);
+            // Add to queue
+            const queueFacet = <keyof QueueFacet> streamFacetQueueMap[source.type];
+            this.queueFacet = queueFacet;
+            this.queueFacetId = facet.facetId;
+            this.queueId = queueAdd(queueFacet, facet.facetId, null, this.id);
+            return this.setStatus(MediaStatus.PENDING);
+          } else {
+            // Just wait
+            this.queueFacet = "mirrorstream";
+            this.queueFacetId = facet.facetId;
+            this.queueId = queueAdd("mirrorstream", facet.facetId, null, this.id);
+            return this.setStatus(MediaStatus.PENDING);
+          }
         }
       }
     }

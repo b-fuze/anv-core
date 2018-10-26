@@ -162,6 +162,7 @@ class Media {
         this.lastUpdate = 0;
         this.speed = 0;
         this.queueId = null;
+        this.queueFacet = null;
         this.id = exports.media.length;
         this.listId = taskMediaList.length;
         exports.media.push(this);
@@ -185,6 +186,7 @@ class Media {
                         return 1;
                 }
             });
+            // Compare old status to new status
             if (compare[0] !== compare[1]) {
                 state_1.tmpState.currentDl += compare[1];
                 task.currentDl += compare[1];
@@ -222,6 +224,7 @@ class Media {
         let refSource = source;
         let streamChild = false;
         // Remap stream sources to their parents if any
+        // TODO: DRY this
         if (source.type === MediaSourceType.Stream) {
             streamChild = true;
             if (source.parent) {
@@ -243,10 +246,13 @@ class Media {
             direct: "providerstream",
             mirror: "mirrorstream",
         };
-        // Add to queue
-        this.queueId = queue_1.queueAdd((streamChild
+        const queueFacet = (streamChild
             ? streamQueueMap[refSource.type]
-            : facetQueueMap[refSource.type]), facet.facetId, null, this.id);
+            : facetQueueMap[refSource.type]);
+        // Add to queue
+        this.queueFacet = queueFacet;
+        this.queueFacetId = facet.facetId;
+        this.queueId = queue_1.queueAdd(queueFacet, facet.facetId, null, this.id);
         this.setStatus(MediaStatus.PENDING);
     }
     stop(finished = false, done) {
@@ -392,6 +398,8 @@ class Media {
                         // Reresolve
                         this.nextSource();
                         this.queueId = queue_1.queueAdd("mirrorstream", mirror.facetId, null, this.id);
+                        this.queueFacet = "mirrorstream";
+                        this.queueFacetId = mirror.facetId;
                         this.setStatus(MediaStatus.PENDING);
                     }
                 });
@@ -473,28 +481,36 @@ class Media {
     }
     startStream(stream) {
         let parentSource;
-        if (!state_1.state.ignoreMaxConnections && stream.parentType === MediaSourceType.Mirror) {
-            const parent = exports.mediaSources[stream.parent];
-            const facet = parentSource = facets_1.getFacetById("mirror", parent.facetId);
-            // Are there too many connections being used now?
-            if (facet.maxConnections && facet.connectionCount === facet.maxConnections) {
-                // Can we skip and are there are any more sources to use? FIXME: Check the following sources aren't also the same mirror
-                if (state_1.state.skipOccupiedMirrors && this.source + 1 < this.sources.length) {
-                    this.nextSource();
-                    const source = this.getSource();
-                    const facet = facets_1.getFacetById(exports.mediaSourceFacetMap[source.type], source.facetId);
-                    const streamFacetQueueMap = {
-                        // FIXME: No such thing as "providerstream"
-                        provider: "providerstream",
-                        mirror: "mirrorstream",
-                    };
-                    // Add to queue
-                    this.queueId = queue_1.queueAdd(streamFacetQueueMap[source.type], facet.facetId, null, this.id);
-                    return this.setStatus(MediaStatus.PENDING);
-                }
-                else {
-                    // Just wait
-                    return this.setStatus(MediaStatus.PENDING);
+        if (stream.parentType === MediaSourceType.Mirror) {
+            if (!state_1.state.ignoreMaxConnections) {
+                const parent = exports.mediaSources[stream.parent];
+                const facet = parentSource = facets_1.getFacetById("mirror", parent.facetId);
+                // Are there too many connections being used now?
+                if (facet.maxConnections && facet.connectionCount >= facet.maxConnections) {
+                    // Can we skip and are there are any more sources to use? FIXME: Check the following sources aren't also the same mirror
+                    if (state_1.state.skipOccupiedMirrors && this.source + 1 < this.sources.length) {
+                        this.nextSource();
+                        const source = this.getSource();
+                        const facet = facets_1.getFacetById(exports.mediaSourceFacetMap[source.type], source.facetId);
+                        const streamFacetQueueMap = {
+                            // FIXME: No such thing as "providerstream"
+                            provider: "providerstream",
+                            mirror: "mirrorstream",
+                        };
+                        // Add to queue
+                        const queueFacet = streamFacetQueueMap[source.type];
+                        this.queueFacet = queueFacet;
+                        this.queueFacetId = facet.facetId;
+                        this.queueId = queue_1.queueAdd(queueFacet, facet.facetId, null, this.id);
+                        return this.setStatus(MediaStatus.PENDING);
+                    }
+                    else {
+                        // Just wait
+                        this.queueFacet = "mirrorstream";
+                        this.queueFacetId = facet.facetId;
+                        this.queueId = queue_1.queueAdd("mirrorstream", facet.facetId, null, this.id);
+                        return this.setStatus(MediaStatus.PENDING);
+                    }
                 }
             }
         }

@@ -112,14 +112,13 @@ export function clock() {
       }
 
       let mediaSource = media.getSource();
-      let mirrorStream = false;
 
+      // Get parent mirror facet if any
       if (mediaSource.type === "stream" && mediaSource.parentType === "mirror") {
         mediaSource = crud.getMediaSource(mediaSource.parent);
-        mirrorStream = true;
       }
 
-      const queueFacet = <any> (mirrorStream ? "mirrorstream" : (<any> sourceQueueMap)[mediaSource.type]);
+      const queueFacet = media.queueFacet;
       const queueId = media.queueId;
 
       if (queueState(queueFacet, mediaSource.facetId, media.queueId) === QueueState.READY) {

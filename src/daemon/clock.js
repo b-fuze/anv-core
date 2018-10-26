@@ -97,12 +97,11 @@ function clock() {
                 continue;
             }
             let mediaSource = media.getSource();
-            let mirrorStream = false;
+            // Get parent mirror facet if any
             if (mediaSource.type === "stream" && mediaSource.parentType === "mirror") {
                 mediaSource = tasks_1.crud.getMediaSource(mediaSource.parent);
-                mirrorStream = true;
             }
-            const queueFacet = (mirrorStream ? "mirrorstream" : sourceQueueMap[mediaSource.type]);
+            const queueFacet = media.queueFacet;
             const queueId = media.queueId;
             if (queue_1.queueState(queueFacet, mediaSource.facetId, media.queueId) === queue_1.QueueState.READY) {
                 // Media is ready in queue
