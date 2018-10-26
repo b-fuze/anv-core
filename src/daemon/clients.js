@@ -138,6 +138,12 @@ exports.instructions = {
                                     // Reset Pending media to Idle
                                     verified.status = tasks_1.MediaStatus.IDLE;
                                 }
+                                if (verified.source >= verified.sources.length) {
+                                    // Reset media's source index to a valid source
+                                    verified.source = Math.max(verified.sources.length - 1, 0);
+                                    // FIXME: Use logging mechanism
+                                    console.log(`Warning: Media "${verified.fileName}" has an invalid source index, from Task "${task.title}"`);
+                                }
                                 media.push(verified);
                             }
                             else {
