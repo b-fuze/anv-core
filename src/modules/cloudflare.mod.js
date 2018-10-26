@@ -8,14 +8,19 @@ register("genericresolver", {
   name: "cloudflare",
   description: "ANV Cloudflare request resolver",
   weight: 0,
-  resolve(url, done) {
-    cflare.get(url, function(err, res, body) {
+  resolve(url, done, opts) {
+    console.log("OPTIONS", opts);
+    cflare.request({
+      method: "GET",
+      url,
+      headers: opts.headers || {},
+    }, function(err, res, body) {
       if (err) {
         done(err, null);
       } else {
         done(null, body);
       }
-    })
+    });
   }
 });
 
