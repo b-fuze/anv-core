@@ -197,6 +197,50 @@ exports.instructions = {
             });
         }
     },
+    taskFromList(taskBase, done) {
+        const task = new tasks_1.Task(taskBase.url || "https://anv.io/url", [], "", "");
+        done(null, task.id);
+        task.title = taskBase.title || "Untitled";
+        task.cover = taskBase.cover || "";
+        // FIXME: DRY with .load(...)
+        task.dlDir = task.settings.dlPath + path.sep + tasks_1.getSimpleName(task.title);
+        task.metaFile = task.dlDir + path.sep + ".anv" + path.sep + "meta";
+        let fileNameBase = task.settings.minimalFileName ? tasks_1.getInitials(task.title) : tasks_1.getSimpleName(task.title);
+        if (/^.+\d$/.test(fileNameBase)) {
+            fileNameBase += "-";
+        }
+        for (let i = 0; i < taskBase.list.length; i++) {
+            const source = taskBase.list[i];
+            const facet = facets_1.getFacetByHost("mirror", source.url);
+            if (facet) {
+                const media = new tasks_1.Media(i + 1 + "", source.filename, task.list, task.id);
+                task.list.push(media);
+                media.sources.push(new tasks_1.MediaSourceMirror(source.url, facet.name, facet.facetId));
+            }
+            else {
+                console.error("ANV.taskFromList: No facet found for (" + source.url + ")");
+            }
+        }
+        // Create dl directory
+        fs.stat(task.dlDir, (err, stats) => {
+            if (err && err.code === 'ENOENT') {
+                fs.mkdir(task.dlDir, (err) => {
+                    if (!err) {
+                        fs.mkdir(task.dlDir + path.sep + ".anv", err => {
+                            task.loaded = true;
+                            task.triggerEvent("load", true);
+                        });
+                    }
+                    else {
+                        console.error("ANV: Error creating directory for task " + task.id, err);
+                    }
+                });
+            }
+            else {
+                console.error("ANV: Directory for task already exists \"" + task.dlDir + "\"");
+            }
+        });
+    },
     select(taskId) {
     },
     start(taskId) {

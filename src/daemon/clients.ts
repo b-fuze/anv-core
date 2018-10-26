@@ -29,6 +29,24 @@ export enum Instruction {
   Delete = "delete",
 }
 
+export interface TaskBase {
+  title?: string;
+  url?: string;
+  cover?: string;
+  list: {
+    filename: string;
+    url: string;
+    resolverOptions?: {
+      generic?: {
+        [option: string]: any;
+      };
+      stream?: {
+        [option: string]: any;
+      };
+    };
+  }[];
+}
+
 export const instructions = {
   load(url: string, done: (err: string, taskId: number) => void) {
     const parsed = parseUrl(url);
@@ -217,6 +235,56 @@ export const instructions = {
         }
       });
     }
+  },
+
+  taskFromList(taskBase: TaskBase, done: (err: string, taskId: number) => void) {
+    // FIXME: Arbitrary URL could be bad
+    const task = new Task(taskBase.url || "https://anv.io/url", [], "", "");
+    done(null, task.id);
+
+    task.title = taskBase.title || "Untitled";
+    task.cover = taskBase.cover || "";
+
+    // FIXME: DRY with .load(...)
+    task.dlDir = task.settings.dlPath + path.sep + getSimpleName(task.title);
+    task.metaFile = task.dlDir + path.sep + ".anv" + path.sep + "meta";
+    let fileNameBase = task.settings.minimalFileName ? getInitials(task.title) : getSimpleName(task.title);
+
+    if (/^.+\d$/.test(fileNameBase)) {
+      fileNameBase += "-";
+    }
+
+    for (let i=0; i<taskBase.list.length; i++) {
+      const source = taskBase.list[i];
+      const facet = getFacetByHost("mirror", source.url);
+
+      if (facet) {
+        const media = new Media(i + 1 + "", source.filename, task.list, task.id);
+        task.list.push(media);
+
+        media.sources.push(new MediaSourceMirror(source.url, facet.name, facet.facetId));
+      } else {
+        console.error("ANV.taskFromList: No facet found for (" + source.url + ")");
+      }
+    }
+
+    // Create dl directory
+    fs.stat(task.dlDir, (err, stats) => {
+      if (err && err.code === 'ENOENT') {
+        fs.mkdir(task.dlDir, (err) => {
+          if (!err) {
+            fs.mkdir(task.dlDir + path.sep + ".anv", err => {
+              task.loaded = true;
+              task.triggerEvent("load", true);
+            });
+          } else {
+            console.error("ANV: Error creating directory for task " + task.id, err);
+          }
+        });
+      } else {
+        console.error("ANV: Directory for task already exists \"" + task.dlDir + "\"");
+      }
+    });
   },
 
   select(taskId: number) {
