@@ -36,6 +36,7 @@ setInstance(class {
 
           if (facet === "mirror") {
             (<Mirror> data).connectionCount = 0;
+            (<Mirror> data).lastStreamUse = 0;
           }
 
           registerFacet(facet, facetId, <any>data);

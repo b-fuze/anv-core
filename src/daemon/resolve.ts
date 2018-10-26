@@ -6,6 +6,7 @@ import {
   StreamResolver,
   MediaSourceItem,
   ProviderItem,
+  MirrorResult,
   getFacet,
   getFacetById,
   getFacetByHost,
@@ -105,8 +106,13 @@ export function resolveMirror(url: string, done: (err: string, url: any) => void
     if (gresolver) {
       gresolver.resolve(url, (err, data) => {
         if (!err) {
-          const streamData = mirror.media(data, tier, url);
-          done(null, streamData);
+          const resolution: string | MirrorResult | Promise<MirrorResult> = mirror.media(data, tier, url);
+
+          if (resolution instanceof Promise) {
+            resolvePromise(resolution, done);
+          } else {
+            done(null, resolution);
+          }
         } else {
           done(err, null);
         }

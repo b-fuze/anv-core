@@ -6,6 +6,7 @@ const queueFacetMap = {
     mirror: "mirror",
     provider: "provider",
     mirrorstream: "mirror",
+    mirrorstreamstart: "mirror",
 };
 var QueueState;
 (function (QueueState) {
@@ -18,7 +19,8 @@ var QueueState;
 const queue = {
     mirror: {},
     provider: {},
-    mirrorstream: {}
+    mirrorstream: {},
+    mirrorstreamstart: {},
 };
 // DEBUG
 ;
@@ -41,14 +43,16 @@ function queueAdd(facet, facetId, callback, id = null) {
 }
 exports.queueAdd = queueAdd;
 function queueState(facet, facetId, queueId) {
-    const facetQueue = queue[facet][facetId];
+    const facetQueue = (queue[facet] || {})[facetId];
     if (!facetQueue) {
         return null;
     }
     const offset = Math.sign(facetQueue.index - queueId);
     return (offset === 0
         ? (facetQueue.ready ? QueueState.READY : QueueState.CURRENT)
-        : offset);
+        : (offset === -1
+            ? QueueState.EARLY
+            : QueueState.PAST));
 }
 exports.queueState = queueState;
 function queueFacetState(facet, facetId) {
@@ -67,7 +71,7 @@ exports.advanceQueue = advanceQueue;
 function processQueue(callback) {
     const mediaIds = [];
     // TODO: Check the relevance of a genericresolver to this issue
-    for (const facetType of ["mirror", "provider", "mirrorstream"]) {
+    for (const facetType of ["mirror", "provider", "mirrorstream", "mirrorstreamstart"]) {
         facetLoop: for (const facetId of Object.keys(queue[facetType])) {
             const facetQueue = queue[facetType][facetId];
             if (!facetQueue.open) {
@@ -77,10 +81,10 @@ function processQueue(callback) {
             const facet = facets_1.getFacetById(queueFacetMap[facetType], facetId);
             let ready;
             let key;
+            const time = Date.now();
             switch (facetType) {
                 case "mirror":
                 case "provider":
-                    const time = Date.now();
                     ready = facetQueue.state !== facet.lastUse && facet.delay < (time - facet.lastUse);
                     key = "lastUse";
                     break;
@@ -89,6 +93,12 @@ function processQueue(callback) {
                         ? true
                         : facetQueue.state !== facet.connectionCount && facet.connectionCount < facet.maxConnections;
                     key = "connectionCount";
+                    break;
+                case "mirrorstreamstart":
+                    ready = !facet.streamDelay
+                        ? true
+                        : facetQueue.state !== facet.lastStreamUse && facet.streamDelay < (time - facet.lastStreamUse);
+                    key = "lastStreamUse";
                     break;
             }
             let queueItem = facetQueue.queue[facetQueue.index];

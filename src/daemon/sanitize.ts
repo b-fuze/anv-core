@@ -196,6 +196,7 @@ export class sanitize {
       weight: [false, "number", 0],
       cache: [false, "boolean", false],
       delay: [false, ["number", "function:2"], 500],
+      streamDelay: [false, ["number", "function:2"], 500],
       maxConnections: [false, "number", 0],
       resolver: [false, "string", "basic"],
       resolverOptions: [false, {

@@ -1,16 +1,18 @@
-import {Mirror, FacetStore, getFacetById} from "./facets";
+import {Provider, Mirror, FacetStore, getFacetById} from "./facets";
 import {state} from "./state";
 
 export interface QueueFacet {
   mirror: {},
   provider: {},
   mirrorstream: {},
+  mirrorstreamstart: {},
 }
 
 const queueFacetMap = {
   mirror: "mirror",
   provider: "provider",
   mirrorstream: "mirror",
+  mirrorstreamstart: "mirror",
 } as {
   [K in keyof QueueFacet]: keyof FacetStore;
 };
@@ -40,7 +42,8 @@ export enum QueueState {
 const queue: Queue = {
   mirror: {},
   provider: {},
-  mirrorstream: {}
+  mirrorstream: {},
+  mirrorstreamstart: {},
 };
 
 // DEBUG
@@ -66,7 +69,7 @@ export function queueAdd(facet: keyof QueueFacet, facetId: string, callback: () 
 }
 
 export function queueState(facet: keyof QueueFacet, facetId: string, queueId: number): QueueState | number {
-  const facetQueue = queue[facet][facetId];
+  const facetQueue = (queue[facet] || {})[facetId];
 
   if (!facetQueue) {
     return null;
@@ -75,7 +78,9 @@ export function queueState(facet: keyof QueueFacet, facetId: string, queueId: nu
   const offset = Math.sign(facetQueue.index - queueId);
   return (offset === 0
           ? (facetQueue.ready ? QueueState.READY : QueueState.CURRENT)
-          : offset);
+          : (offset === -1
+             ? QueueState.EARLY
+             : QueueState.PAST));
 }
 
 export function queueFacetState(facet: keyof QueueFacet, facetId: string) {
@@ -97,7 +102,7 @@ export function processQueue(callback: (ids: number[]) => void) {
   const mediaIds: number[] = [];
 
   // TODO: Check the relevance of a genericresolver to this issue
-  for (const facetType of ["mirror", "provider", "mirrorstream"]) {
+  for (const facetType of ["mirror", "provider", "mirrorstream", "mirrorstreamstart"]) {
     facetLoop:
     for (const facetId of Object.keys(queue[<keyof QueueFacet> facetType])) {
       const facetQueue = queue[<keyof QueueFacet> facetType][facetId];
@@ -112,11 +117,11 @@ export function processQueue(callback: (ids: number[]) => void) {
       let ready: boolean;
       let key: string;
 
+      const time = Date.now();
       switch (<keyof QueueFacet> facetType) {
         case "mirror":
         case "provider":
-          const time = Date.now();
-          ready = facetQueue.state !== facet.lastUse && (<any> facet).delay < (time - facet.lastUse);
+          ready = facetQueue.state !== facet.lastUse && (<Mirror | Provider> facet).delay < (time - facet.lastUse);
           key = "lastUse";
           break;
         case "mirrorstream":
@@ -124,6 +129,12 @@ export function processQueue(callback: (ids: number[]) => void) {
                   ? true
                   : facetQueue.state !== (<Mirror> facet).connectionCount && (<Mirror> facet).connectionCount < (<Mirror> facet).maxConnections;
           key = "connectionCount";
+          break;
+        case "mirrorstreamstart":
+          ready = !(<Mirror> facet).streamDelay
+                  ? true
+                  : facetQueue.state !== (<Mirror> facet).lastStreamUse && (<Mirror> facet).streamDelay < (time - (<Mirror> facet).lastStreamUse);
+          key = "lastStreamUse";
           break;
       }
 

@@ -529,7 +529,35 @@ class Media {
         });
         break;
       case "stream":
-        this.startStream(<MediaSourceStream> source);
+        const parentSource = source.parent && crud.getMediaSource(source.parent);
+
+        if (this.queueFacet !== "mirrorstream"
+            && parentSource && parentSource.type === MediaSourceType.Mirror) {
+          const mirror = getFacetById("mirror", parentSource.facetId);
+
+          if (this.queueFacet === "mirrorstreamstart" && this.queueFacetId === mirror.facetId) {
+            // Already queued
+            if (queueState("mirrorstreamstart", mirror.facetId, this.queueId) === QueueState.READY) {
+              // Ready
+              this.startStream(<MediaSourceStream> source);
+              mirror.lastStreamUse = Date.now();
+
+              // Clear queue flags
+              this.queueFacet = null;
+              this.queueFacetId = null;
+            }
+          } else {
+            // Have to queue this stream
+            this.queueId = queueAdd("mirrorstreamstart", mirror.facetId, null, this.id);
+            this.queueFacet = "mirrorstreamstart";
+            this.queueFacetId = mirror.facetId;
+            this.setStatus(MediaStatus.PENDING);
+          }
+        } else {
+          // No suitable parent source to queue or queued for streaming, just start dl'ing now
+          this.startStream(<MediaSourceStream> source);
+        }
+
         break;
     }
   }

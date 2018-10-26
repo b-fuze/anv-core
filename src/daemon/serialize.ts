@@ -44,7 +44,7 @@ export interface MediaSourceSerialized {
   type: MediaSourceType;
   facet: string;
   facetId: string;
-  facetType: string;
+  facetType: "provider" | "mirror" | "streamresolver";
   url: string;
   parent: number;
   parentType: MediaSourceType;
